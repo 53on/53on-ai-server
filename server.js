@@ -22,6 +22,8 @@ const down = () => { images.unload(); chat.saveAll(() => { const w = () => image
 process.on('SIGTERM', down);
 process.on('SIGINT', down);
 
+// this server's version and its home: the panel's About asks GitHub for a newer release (the browser asks, never the server)
+const VERSION = '1.0.0', REPO = 'enriqxxx/53on-ai-server';
 const CFG_PATH = path.join(__dirname, 'config.json');
 let cfg = { port: 11500, public_url: '', max_concurrent: 1, keys: [], admin_token: '', lang: 'en' };
 // config.json, or on a first start the template (the first save writes it as config.json)
@@ -204,8 +206,7 @@ const ALLOW = [
   { m: 'POST', re: /^\/v1\/chat\/completions\/?$/ },
   { m: 'POST', re: /^\/v1\/completions\/?$/ },
 ];
-// the panel lives at /admin (the industry's path); the old /ia_server answers the same for the tools that still use it
-const pathOf  = (u) => (u || '').split('?')[0].replace(/^\/ia_server(?=\/|$)/, '/admin');
+const pathOf  = (u) => (u || '').split('?')[0];
 // requests browsers make on their own
 const BROWSER_NOISE = /^\/(favicon\.ico|robots\.txt|sitemap\.xml|apple-touch-icon.*\.png|browserconfig\.xml|\.well-known\/)/;
 const allowed = (req) => ALLOW.some(a => a.m === req.method && a.re.test(pathOf(req.url)));
@@ -583,7 +584,7 @@ function handleAdmin(req, res, p) {
   // the accumulated usage (per key, model and day) and the pulse start over; keys, plans and config stay
   if (p === '/admin/api/usage' && req.method === 'DELETE') { audit(req, p, {}); USE = { keys: {}, models: {}, days: {} }; writeUsage(); PULSE.length = 0; return jres(res, 200, { ok: true }); }
   if (p === '/admin/api/state' && req.method === 'GET') return jres(res, 200, {
-    on: selected(), free: mem.free(),
+    on: selected(), free: mem.free(), version: VERSION, repo: REPO,
     // port is the street door (tls); lan_port the house one, plain http, so the panel names it right whichever it came through
     public_url: cfg.public_url || '', port: cfg.port, lan_port: server.setSecureContext ? cfg.port + 1 : cfg.port,
     lan: lanIPs(), max_concurrent: MAXC, engine: (EN().name || 'engine') + ' ' + chat.version(), engines: engines(), engine_job: ENG, engine_src: EN(), engine_dir: ENGD,
@@ -868,7 +869,6 @@ const _mkServer = (handler) => {
 };
 const server = _mkServer((req, res) => {
   const p = pathOf(req.url);
-  if (/^\/ia_server\/?$/.test((req.url || '').split('?')[0])) { res.writeHead(301, { location: '/admin' }); return res.end(); }
   // CORS: HTTPS browser clients must be allowed to send Authorization
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');

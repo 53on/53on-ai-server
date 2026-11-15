@@ -780,6 +780,17 @@ function enter() { login($('#tok').value.trim()); }
 let _rfT = 0;
 // a silent catch left the panel empty after a reload: retry, then say so
 // both lanes' current names, asked once by this browser (never by the server): stable vX.Y.Z and the newest nightly with the ubuntu-vulkan build
+// a newer release of this server on GitHub, asked once by this browser (never by the server)
+let UPDH = '', UPDQ = 0;
+const vcmp = (x, y) => { x = String(x).split('.').map(Number); y = String(y).split('.').map(Number); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; };
+function updCheck(s) {
+  if (UPDQ++ || !s.repo || !s.version) return;
+  fetch('https://api.github.com/repos/' + s.repo + '/releases/latest').then(r => r.ok ? r.json() : null).then(j => {
+    const t = j && String(j.tag_name || '').replace(/^v/, ''); if (!t) return;
+    UPDH = vcmp(t, s.version) > 0 ? `· <a href="${esc(j.html_url)}" target="_blank" rel="noopener">⬆ ${__('new_version', [esc(j.tag_name)])}</a>` : '· ✓ ' + __('up_to_date');
+    $('#about')._h = 0; if (LS) render(LS);
+  }).catch(() => {});
+}
 async function relInfo(E) {
   const g = 'https://api.github.com/repos/' + E.repo + '/releases';
   try {
@@ -828,9 +839,11 @@ function render(s) {
     + `<div class="sp"><b>${__('served')}</b></div>`
     + `<div class="mn-vit sp">${(() => { let i = 0, o = 0, r = 0, usd = 0; for (const k in USAGE) { const u = USAGE[k] || {}; i += u.in || 0; o += u.out || 0; r += u.req || 0; usd += u.usd || 0; } let c = 0; try { c = +localStorage.getItem('ia_cost_tok') || 0; } catch (_) {} return mtile(__('input'), fmtT(i)) + mtile(__('output'), fmtT(o)) + mtile(__('requests'), r.toLocaleString()) + (c > 0 ? mtile(__('est_cost'), '$' + ((i + o) / 1e6 * c).toFixed(2), __('per_1m', [c])) : '') + (usd > 0 ? mtile(__('real_cloud'), '$' + usd.toFixed(4)) : ''); })()}</div>`);
   // About: the product from live data (version, engine, capabilities, links)
+  updCheck(s);
   put('#about',
     `<div style="display:flex;align-items:center;gap:12px"><img src="/admin/logo.png" alt="53ON" width="56" height="56"><div style="font-size:16px;font-weight:700">53ON AI Server <span class="mut" style="font-size:13px;font-weight:400">· ${__('about_tag')}</span></div></div>`
     + `<div class="mut sp">${__('about_text')}</div>`
+    + `<div class="sp"><b>${__('version')}:</b> ${esc(s.version || '')} ${UPDH}</div>`
     + `<div class="sp"><b>${__('engine')}:</b> ${esc(E.name || '—')} ${esc(cur || '')} · ${eng}</div>`
     + `<div class="sp"><b>${__('caps')}:</b> ${__('caps_list', ['<code>generate_image</code>'])}</div>`
     + `<div class="sp"><b>${__('compat')}:</b><div class="mut" style="font-size:12px;margin-top:4px"><code>/v1/chat/completions</code> · <code>/v1/completions</code> · <code>/v1/models</code> · <code>/v1/messages</code></div></div>`

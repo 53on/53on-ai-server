@@ -22,7 +22,7 @@ A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](
 - **Cloud providers.** Relay Anthropic, OpenAI, Google, DeepSeek, Groq, Alibaba, OpenRouter and more through the same API. Provider keys stay on the server, and the server's own cloud catalog says the context of each cloud model.
 - **API keys with plans.** Token quotas, monthly plans, daily caps, image permission, usage per key, export and import.
 - **Live monitor.** GPU use and temperature, memory, power, and every request with its speed.
-- **English and Spanish,** with help on every card.
+- **English and Spanish,** with help on every card, and a note in About when a newer release is out on GitHub.
 
 ## Quick start
 
@@ -34,7 +34,7 @@ cd 53on-ai-server
 node server.js
 ```
 
-The first start writes `config.json` from `config.example.json` and prints the admin token once (it is also kept in `config.json`). Then:
+The first start writes `config.json` from `config.example.json` and creates the admin token. It is printed once, on a line that reads `admin token (panel /admin): adm-…`, and it is kept in `config.json` as `admin_token`. Running as a service, read it with `journalctl -u ia-server | grep "admin token"`. Then:
 
 1. Open `http://<server>:11500/admin` from the local network and enter the token.
 2. **Settings › Engine:** choose *stable* or *nightly*. The server downloads the llama.cpp build into `~/engines`, verifies its sha256, tests it and switches to it.

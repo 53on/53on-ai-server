@@ -370,5 +370,8 @@
 "ui.help_usage_data": "Estadísticas acumuladas de uso. Borrarlas pone a cero los contadores de todas las claves; no se puede deshacer.",
 "ui.help_user_keys": "Exportar guarda en un archivo todas las claves con sus planes y su consumo. Importar agrega las nuevas y actualiza las existentes.\nEl archivo contiene las claves en claro: guardarlo como una contraseña.",
 "ui.help_security": "Token de administración del panel. Al cambiarlo, el anterior deja de valer de inmediato en todos los navegadores y scripts.",
-"ui.panel": "Panel de control"
+"ui.panel": "Panel de control",
+"ui.version": "Versión",
+"ui.up_to_date": "al día",
+"ui.new_version": "{0} disponible"
 }

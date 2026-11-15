@@ -381,5 +381,8 @@
 "ui.help_usage_data": "Accumulated usage statistics. Clearing them resets the counters of every key; it cannot be undone.",
 "ui.help_user_keys": "Export saves every key with its plan and usage to a file. Import adds new keys and updates existing ones.\nThe file holds the keys in clear text: store it like a password.",
 "ui.help_security": "The panel's admin token. When it changes, the previous one stops working at once in every browser and script.",
-"ui.panel": "Control Panel"
+"ui.panel": "Control Panel",
+"ui.version": "Version",
+"ui.up_to_date": "up to date",
+"ui.new_version": "{0} available"
 }
