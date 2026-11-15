@@ -11,7 +11,7 @@ A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](
 > [!TIP]
 > **Give your AI a memory and a body with [53ON Harness](https://github.com/enriqxxx/53on-harness).** It remembers between sessions, sees your screen, speaks, browses and works on your PC, and it uses this server as its model. Pair them and your AI runs entirely at home.
 >
-> [![Get 53ON Harness](https://img.shields.io/badge/Get-53ON%20Harness-7C5CFF?style=for-the-badge)](https://github.com/enriqxxx/53on-harness/releases/latest)
+> [![Get 53ON Harness](https://img.shields.io/badge/Get-53ON%20Harness-7C5CFF?style=for-the-badge)](https://github.com/enriqxxx/53on-harness/releases/latest) [![53ON on the App Store](https://img.shields.io/badge/App%20Store-53ON-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://apps.apple.com/us/app/53on/id6758736136) [![53ON on Google Play](https://img.shields.io/badge/Google%20Play-53ON-01875F?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.vcorps.five_three_on)
 
 ## Features
 
@@ -92,7 +92,7 @@ Everything is set from the panel and saved to `config.json`; while the server ru
 
 ## Works with 53ON Harness
 
-[53ON Harness](https://github.com/enriqxxx/53on-harness) gives your AI a memory that stays and hands, eyes and voice on your own PC, and it connects to this server as its model. The rest of 53ON, from WhatsApp answered by your AI to your own store, is at [53on.com](https://53on.com).
+[53ON Harness](https://github.com/enriqxxx/53on-harness) gives your AI a memory that stays and hands, eyes and voice on your own PC, and it connects to this server as its model. The rest of 53ON, from WhatsApp answered by your AI to your own store, is at [53on.com](https://53on.com) and in the 53ON app for [iOS](https://apps.apple.com/us/app/53on/id6758736136) and [Android](https://play.google.com/store/apps/details?id=com.vcorps.five_three_on).
 
 ## Acknowledgments
 
