@@ -11,8 +11,8 @@
     "models_dir": "",
     "models": {},
     "engine": {
-      "name": "llama.cpp",
-      "repo": "ggml-org/llama.cpp",
+      "name": "53ON llama.cpp",
+      "repo": "enriqxxx/llama.cpp",
       "dir": "llama-",
       "asset": "-bin-ubuntu-vulkan-x64.tar.gz",
       "pin": "nightly-tag.txt",

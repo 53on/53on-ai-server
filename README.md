@@ -38,7 +38,7 @@ node server.js
 The first start writes `config.json` from `config.example.json` and creates the admin token. It is printed once, on a line that reads `admin token (panel /admin): adm-…`, and it is kept in `config.json` as `admin_token`. Running as a service, read it with `journalctl -u ia-server | grep "admin token"`. Then:
 
 1. Open `http://<server>:11500/admin` from the local network and enter the token.
-2. **Settings › Engine:** choose *stable* or *nightly*. The server downloads the llama.cpp build into `~/engines`, verifies its sha256, tests it and switches to it.
+2. **Settings › Engine:** choose *stable* or *newest*. The server downloads [our llama.cpp build](https://github.com/enriqxxx/llama.cpp/releases) into `~/engines`, verifies its sha256, tests it and switches to it.
 3. **Models:** copy each model into its own folder, `~/models/<name>/` (the `.gguf`, and its `mmproj` beside it if it sees images), then add it with **+**.
 4. **Keys:** create a key for each client. Clients use `http://<server>:11500/v1` with that key.
 
@@ -72,12 +72,12 @@ What we run on a Ryzen AI Max+ 395 mini PC with 128 GB of unified memory:
 
   `ttm.pages_limit` lets the GPU map about 105 GB of system memory, and the longer lockup timeout keeps a long prompt from being taken for a hang.
 - **A recent Mesa for Vulkan (RADV).** `sudo add-apt-repository ppa:kisak/kisak-mesa && sudo apt upgrade`.
-- **The llama.cpp Vulkan build** (`ubuntu-vulkan-x64`), which the panel installs from **Settings › Engine**.
+- **Our llama.cpp Vulkan build** (`ubuntu-vulkan-x64`), which the panel installs from **Settings › Engine**.
 - **The service file in `deploy/`** keeps the server up if a model runs out of memory (`OOMPolicy=continue`) and stops the engines with it (`KillMode=mixed`).
 
 ## Our llama.cpp
 
-The server runs any recent official llama.cpp build. We also keep our own build, which adds:
+The panel installs [our own llama.cpp build](https://github.com/enriqxxx/llama.cpp/releases), the one our AI runs on every day, built for Ubuntu 24.04 with Vulkan. It is upstream llama.cpp plus:
 
 - **Dynamic VRAM.** The context memory grows with use, like a dynamic virtual disk, instead of being reserved whole at load: on Vulkan the KV cache and the compute buffers take memory in blocks as tokens arrive (sparse buffers, mapped directly on APUs), and on Linux the CPU path does the same. Measured on a Ryzen AI Max+ 395: a 1B model with a 1M-token window starts with 0.86 GiB instead of 8.24 GiB, and a 4B model at 262K with 4.41 GiB instead of 8.94 GiB.
 - **Fair scheduling.** `--prefill-budget-busy` and `--spec-max-busy-slots`: a long prompt no longer starves the users who are already getting an answer.
@@ -85,7 +85,7 @@ The server runs any recent official llama.cpp build. We also keep our own build,
 - **Slot save and restore with KV tensors over 1 GiB on Vulkan** ([#25584](https://github.com/ggml-org/llama.cpp/pull/25584)), needed for million-token windows.
 - **Multimodal MTP for qwen4exp models** ([#30316](https://github.com/ggml-org/llama.cpp/pull/30316)): the draft model accepts image embeddings.
 
-Each change is dropped as soon as upstream llama.cpp includes it.
+Each change is dropped as soon as upstream llama.cpp includes it. The server also runs any recent official build: to use one, stop the server and set `chat.engine` in `config.json` to `"name": "llama.cpp"` and `"repo": "ggml-org/llama.cpp"`.
 
 ## Configuration
 
