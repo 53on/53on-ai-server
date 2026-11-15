@@ -848,6 +848,7 @@ function render(s) {
     + `<div class="sp"><b>${__('caps')}:</b> ${__('caps_list', ['<code>generate_image</code>'])}</div>`
     + `<div class="sp"><b>${__('compat')}:</b><div class="mut" style="font-size:12px;margin-top:4px"><code>/v1/chat/completions</code> · <code>/v1/completions</code> · <code>/v1/models</code> · <code>/v1/messages</code></div></div>`
     + `<div class="sp mut">${__('about_counts', [DL.length, (s.keys || []).length])}</div>`
+    + `<div class="sp">${[s.repo && gl('https://github.com/' + s.repo, '💻 53ON AI Server (GitHub)'), gl('https://github.com/enriqxxx/53on-harness', '🧩 53ON Harness (GitHub)')].filter(Boolean).join(' · ')}</div>`
     + (E.guide || E.repo ? `<div class="sp">${[E.guide && gl(E.guide, '📖 ' + __('guide')), E.repo && gl('https://github.com/' + E.repo, '💻 ' + __('engine') + ' (GitHub)')].filter(Boolean).join(' · ')}</div>` : '')
     + `<div class="sp mut" style="font-size:11px">${__('about_foot')}</div><div class="mut" style="font-size:11px;margin-top:4px">${__('about_legal')}</div>`);
   SEL = s.on || []; FREE = s.free; val('#ctxcap', s.ctx_cap || 8192); ctxTag();
