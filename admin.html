@@ -252,6 +252,8 @@
 .mdl{padding:7px 0;border-bottom:1px solid var(--ln);margin:0}
 .mdl .lbtn{flex:0 0 auto;width:38px;padding:6px 0;font-size:13px}
 .hbtn{width:18px;height:18px;margin-left:6px;cursor:pointer;vertical-align:middle}
+.lnk{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;margin:6px 8px 0 0;border-radius:10px;background:var(--in);border:1px solid var(--ln);color:var(--tx);text-decoration:none;font-size:13px}
+.lnk:hover{border-color:var(--ac);box-shadow:0 2px 10px rgba(0,0,0,.12)}
 #askm{white-space:pre-line}
 .ebtn{flex:0 0 auto;width:34px;padding:6px 0;font-size:13px;background:var(--in);border:1px solid var(--ln);color:var(--tx)}
 .msec .ebtn{float:right;width:28px;padding:1px 0;margin-top:-3px;font-size:15px;line-height:1.2}
@@ -818,6 +820,8 @@ function render(s) {
   // the engine: installed builds or the newest release, prebuilt (never compiled); J is the update in progress or the last one
   const J = s.engine_job, run = J && J.state === 'run', cur = String(s.engine || '').split(' ').pop();
   // everything particular to the engine comes from config chat.engine (s.engine_src): name, repo, folder, build file, guide
+  // a link drawn as a button: icon, name and GitHub, no underline
+  const lk = (u, i, t) => `<a class="lnk" href="${esc(u)}" target="_blank" rel="noopener">${i} <b>${t}</b> <span class="mut">GitHub ↗</span></a>`;
   const E = s.engine_src || {}, GH = 'https://github.com/' + E.repo + '/releases', gl = (u, t) => `<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>`;
   if (!REL && E.repo) { REL = {}; relInfo(E); }
   const lb = (k, t) => t + (REL && REL[k] ? ' · ' + esc(REL[k]) : '');
@@ -848,8 +852,7 @@ function render(s) {
     + `<div class="sp"><b>${__('caps')}:</b> ${__('caps_list', ['<code>generate_image</code>'])}</div>`
     + `<div class="sp"><b>${__('compat')}:</b><div class="mut" style="font-size:12px;margin-top:4px"><code>/v1/chat/completions</code> · <code>/v1/completions</code> · <code>/v1/models</code> · <code>/v1/messages</code></div></div>`
     + `<div class="sp mut">${__('about_counts', [DL.length, (s.keys || []).length])}</div>`
-    + `<div class="sp">${[s.repo && gl('https://github.com/' + s.repo, '💻 53ON AI Server (GitHub)'), gl('https://github.com/enriqxxx/53on-harness', '🧩 53ON Harness (GitHub)')].filter(Boolean).join(' · ')}</div>`
-    + (E.guide || E.repo ? `<div class="sp">${[E.guide && gl(E.guide, '📖 ' + __('guide')), E.repo && gl('https://github.com/' + E.repo, '💻 ' + __('engine') + ' (GitHub)')].filter(Boolean).join(' · ')}</div>` : '')
+    + `<div class="sp">${[s.repo && lk('https://github.com/' + s.repo, '💻', '53ON AI Server'), lk('https://github.com/enriqxxx/53on-harness', '🧩', '53ON Harness'), E.repo && lk('https://github.com/' + E.repo, '🦙', esc(E.name || 'llama.cpp')), E.guide && lk(E.guide, '📖', __('guide'))].filter(Boolean).join('')}</div>`
     + `<div class="sp mut" style="font-size:11px">${__('about_foot')}</div><div class="mut" style="font-size:11px;margin-top:4px">${__('about_legal')}</div>`);
   SEL = s.on || []; FREE = s.free; val('#ctxcap', s.ctx_cap || 8192); ctxTag();
   TOOLS = s.tools || {};
