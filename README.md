@@ -2,7 +2,7 @@
 
 **Your own OpenAI-compatible AI server, built for AMD Ryzen AI Max. Local models, cloud providers and API keys in one control panel.**
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu-24.04-E95420)](#recommended-setup-amd-ryzen-ai-max) [![AMD Ryzen AI Max](https://img.shields.io/badge/AMD-Ryzen%20AI%20Max-ED1C24)](#recommended-setup-amd-ryzen-ai-max) [![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-339933)](#quick-start) [![53on.com](https://img.shields.io/badge/53on.com-store-7C5CFF)](https://53on.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu-24.04-E95420)](#recommended-setup-amd-ryzen-ai-max) [![AMD Ryzen AI Max](https://img.shields.io/badge/AMD-Ryzen%20AI%20Max-ED1C24)](#recommended-setup-amd-ryzen-ai-max) [![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-339933)](#quick-start) [![53on.com](https://img.shields.io/badge/53on.com-store-7C5CFF)](https://53on.com) [![Buy us a coffee](https://img.shields.io/badge/Buy%20us%20a%20coffee-PayPal-003087?logo=paypal&logoColor=white)](https://paypal.me/enriqxmen)
 
 A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](https://github.com/ggml-org/llama.cpp), with a control panel to load models, catalog them, relay cloud providers and hand out API keys with quotas. It has no dependencies: plain Node.js, one folder, one process.
 
@@ -94,6 +94,10 @@ Everything is set from the panel and saved to `config.json`; while the server ru
 ## Works with 53ON Harness
 
 [53ON Harness](https://github.com/enriqxxx/53on-harness) gives your AI a memory that stays and hands, eyes and voice on your own PC, and it connects to this server as its model. The rest of 53ON, from WhatsApp answered by your AI to your own store, is at [53on.com](https://53on.com) and in the 53ON app for [iOS](https://apps.apple.com/us/app/53on/id6758736136) and [Android](https://play.google.com/store/apps/details?id=com.vcorps.five_three_on).
+
+## Support
+
+53ON AI Server is free. If it is useful to you, [buy us a coffee](https://paypal.me/enriqxmen) ☕: it helps us keep improving it.
 
 ## Acknowledgments
 

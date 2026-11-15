@@ -385,5 +385,6 @@
 "ui.version": "Version",
 "ui.up_to_date": "up to date",
 "ui.new_version": "{0} available",
-"ui.cat_preset": "53ON calibration applied"
+"ui.cat_preset": "53ON calibration applied",
+"ui.coffee": "Buy us a coffee"
 }

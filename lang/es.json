@@ -374,5 +374,6 @@
 "ui.version": "Versión",
 "ui.up_to_date": "al día",
 "ui.new_version": "{0} disponible",
-"ui.cat_preset": "calibración de 53ON aplicada"
+"ui.cat_preset": "calibración de 53ON aplicada",
+"ui.coffee": "Invítanos un café"
 }
