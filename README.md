@@ -8,6 +8,11 @@ A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](
 
 ![53ON AI Server: the models, the model editor, the cloud catalog and the API keys](assets/screenshots.png)
 
+> [!TIP]
+> **Give your AI a memory and a body with [53ON Harness](https://github.com/enriqxxx/53on-harness).** It remembers between sessions, sees your screen, speaks, browses and works on your PC, and it uses this server as its model. Pair them and your AI runs entirely at home.
+>
+> [![Get 53ON Harness](https://img.shields.io/badge/Get-53ON%20Harness-7C5CFF?style=for-the-badge)](https://github.com/enriqxxx/53on-harness/releases/latest)
+
 ## Features
 
 - **OpenAI and Anthropic compatible.** `/v1/chat/completions`, `/v1/completions`, `/v1/models` and `/v1/messages`, with streaming, tools and vision. `/v1/models` reports each model's `context_length` (what it serves) and `max_context_length` (its trained maximum).
@@ -67,6 +72,16 @@ Everything is set from the panel and saved to `config.json`; while the server ru
 ## Works with 53ON Harness
 
 [53ON Harness](https://github.com/enriqxxx/53on-harness) gives your AI a memory that stays and hands, eyes and voice on your own PC, and it connects to this server as its model. The rest of 53ON, from WhatsApp answered by your AI to your own store, is at [53on.com](https://53on.com).
+
+## Acknowledgments
+
+53ON AI Server stands on the work of others, and we thank them:
+
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) by ggml-org and its community, the engine that runs every local model here.
+- [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) by leejet, the engine behind image creation and editing.
+- [LiteLLM](https://github.com/BerriAI/litellm), whose public table of model prices tells the server what each cloud request costs.
+- [Strata](https://github.com/Niko1221/Strata), whose model library and file discovery inspired the catalog editor.
+- The AMD Linux community: the Mesa RADV developers and the [kisak-mesa](https://launchpad.net/~kisak/+archive/ubuntu/kisak-mesa) PPA, which keep Vulkan fast on Ryzen AI Max.
 
 ## Security
 
