@@ -491,15 +491,15 @@ const cloudRow = (id) => { const i = String(id).indexOf('/'), pv = String(id).sl
 const served = () => { const l = chat.list(); return [].concat(...selected().map((m) => isClaude(m) ? [claudeModel()] : isCloudId(m) ? [cloudRow(m)] : l.filter((r) => r.name === m).map(localModel))); };
 const handleModels = (res) => jres(res, 200, { object: 'list', data: served() });
 
-// The admin panel does not exist for the internet. The router does SNAT, so whatever comes from outside
-// arrives from the gateway's address and that gives it away; the local network keeps its real IP.
-// The system's gateway is read, never hard-coded: a new router still works.
+// The admin panel does not exist for the internet: it answers only private, loopback and VPN addresses (the image
+// module's LAN list). A router that does SNAT makes the internet arrive from the gateway's own address, so that one
+// is refused too; the gateway is read from the system, never hard-coded.
 const ipOf = (req) => String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
 const GW = (() => { try {
   const r = fs.readFileSync('/proc/net/route', 'utf8').split('\n').find(l => l.split(/\s+/)[1] === '00000000');
   return r ? r.split(/\s+/)[2].match(/../g).reverse().map(x => parseInt(x, 16)).join('.') : '';
 } catch (_) { return ''; } })();
-const fromNet = (req) => !!GW && ipOf(req) === GW;
+const fromNet = (req) => { const ip = ipOf(req); return (!!GW && ip === GW) || !images.LAN.check(ip, ip.includes(':') ? 'ipv6' : 'ipv4'); };
 // Constant-time equality (no length or prefix leaks through timing); different lengths are simply unequal.
 const same = (a, b) => { a = Buffer.from(String(a)); b = Buffer.from(String(b)); return a.length === b.length && crypto.timingSafeEqual(a, b); };
 // One line per admin mutation in audit.log (600, rotated at 256 KB to .1): time, ip, route and what it touched by

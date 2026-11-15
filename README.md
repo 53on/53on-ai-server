@@ -88,7 +88,7 @@ Each change is dropped as soon as upstream llama.cpp includes it.
 
 ## Configuration
 
-Everything is set from the panel and saved to `config.json`; while the server runs, change it from the panel, not by hand. The panel and its API answer only on the local network: a request that comes from the internet through the router gets `404`. For HTTPS, put `fullchain.pem` and `privkey.pem` in `certs/`: the server then serves HTTPS on port 11500 and plain HTTP on 11501.
+Everything is set from the panel and saved to `config.json`; while the server runs, change it from the panel, not by hand. For HTTPS, put `fullchain.pem` and `privkey.pem` in `certs/`: the server then serves HTTPS on port 11500 and plain HTTP on 11501.
 
 ## Works with 53ON Harness
 
@@ -105,6 +105,12 @@ Everything is set from the panel and saved to `config.json`; while the server ru
 - The AMD Linux community: the Mesa RADV developers and the [kisak-mesa](https://launchpad.net/~kisak/+archive/ubuntu/kisak-mesa) PPA, which keep Vulkan fast on Ryzen AI Max.
 
 ## Security
+
+- **The panel does not exist for the internet.** `/admin` and its API answer only private, loopback and VPN addresses; a request from the internet gets `404`, whether the router passes the visitor's address or its own. Behind a reverse proxy or a tunnel on the same machine every request looks local, so do not publish `/admin` through one.
+- **Keys and tokens are random:** 96 bits for the admin token and 120 for each API key. Use HTTPS on the local network too, so they never travel in clear.
+- **Clients cannot reach your network:** a picture URL is fetched only from public addresses, with its IP pinned and no redirects followed.
+- **Claude Code, when enabled, runs with no tools,** so a client cannot make it read files or run commands.
+- **Run it as an unprivileged user,** as `deploy/ia-server.service` does: whoever holds the admin token chooses the engine and its arguments.
 
 If you find a vulnerability, please report it privately through this repository's Security tab ("Report a vulnerability") instead of opening a public issue.
 

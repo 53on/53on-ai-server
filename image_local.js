@@ -269,4 +269,4 @@ function draw(id, a, cb) {
   fetchImage(a.image, (e, img) => e ? bad(e, 'could not read the image to edit') : go(img));
 }
 
-module.exports = { options, has, task, can, need, peak, list, state, load, unload, draw, gpuGb, freePort, DIR, DAY, T, jobs: () => pend, held, busyWith: (f) => { chatBusy = f; }, roomWith: (f) => { room = f; }, freedWith: (f) => { freed = f; }, grewWith: (f) => { grew = f; } };
+module.exports = { options, has, task, can, need, peak, list, state, load, unload, draw, gpuGb, freePort, DIR, DAY, T, LAN, jobs: () => pend, held, busyWith: (f) => { chatBusy = f; }, roomWith: (f) => { room = f; }, freedWith: (f) => { freed = f; }, grewWith: (f) => { grew = f; } };
