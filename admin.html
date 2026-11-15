@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>53ON AI Server</title>
+<link rel="icon" href="/admin/logo.png">
+<style>
+  :root{--bg:#0f1117;--card:#1a1d28;--ln:#2a2f3e;--tx:#e6e9f0;--mut:#8b93a7;--ac:#6c8cff;--ok:#3ecf8e;--dz:#ff6b6b;--in:#0f1117}
+  :root[data-theme=light]{--bg:#f5f6f6;--card:#fff;--ln:#d5d9d9;--tx:#111;--mut:#565959;--ac:#007aff;--ok:#0ca678;--dz:#e03131;--in:#eef0f5}
+  @media (prefers-color-scheme:light){:root:not([data-theme]){--bg:#f5f6f6;--card:#fff;--ln:#d5d9d9;--tx:#111;--mut:#565959;--ac:#007aff;--ok:#0ca678;--dz:#e03131;--in:#eef0f5}}
+  *{box-sizing:border-box} body{margin:0;font:14px/1.5 Inter,system-ui,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--tx)}
+  .wrap{max-width:780px;margin:0 auto;padding:22px 16px 60px}
+  h1{font-size:20px;margin:0 0 2px} .sub{color:var(--mut);font-size:12px}
+  .hd{display:flex;gap:10px;align-items:flex-start;margin-bottom:18px} .hd>div{flex:1} #thbtn{padding:6px 10px}
+  .card{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:0 0 12px}
+  label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+  input,select{width:100%;background:var(--in);border:1px solid var(--ln);color:var(--tx);border-radius:9px;padding:9px 11px;font-size:14px}
+  button{background:var(--ac);color:#fff;border:0;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer}
+  button.ghost{background:var(--in);border:1px solid var(--ln);color:var(--tx)}
+  button.dz{background:transparent;color:var(--dz);border:1px solid var(--dz);padding:5px 9px}
+  button.play{background:var(--ok);color:#fff}
+  button.danger{background:var(--dz);color:#fff}
+  button.tg{flex:0 0 auto;min-width:48px;font-size:15px}
+  button:disabled{opacity:.4;cursor:default}
+  .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap} .row>div{flex:1;min-width:130px}
+  table{width:100%;border-collapse:collapse;margin-top:8px} td,th{text-align:left;padding:8px 6px;border-bottom:1px solid var(--ln);font-size:13px;vertical-align:middle}
+  th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase}
+  code{background:var(--in);border:1px solid var(--ln);border-radius:6px;padding:2px 6px;font-size:12px;word-break:break-all}
+  .pill{display:inline-block;background:var(--in);border:1px solid var(--ln);border-radius:20px;padding:3px 10px;font-size:12px;margin:2px 4px 2px 0}
+  .ok{color:var(--ok)} .mut{color:var(--mut)} .hide{display:none} .sp{margin-top:12px}
+  .vbar{background:var(--in);border:1px solid var(--ln);border-radius:7px;height:9px;margin:7px 0;overflow:hidden}
+  .vbar>i{display:block;height:100%;background:var(--ok)}
+  .vbar.warn>i{background:var(--ac)} .vbar.full>i{background:var(--dz)}
+  .mdl{display:flex;align-items:center;gap:9px;margin:4px 0} .mdl>span{flex:1;min-width:0}
+  .ask{position:fixed;inset:0;background:#0009;display:flex;align-items:center;justify-content:center;z-index:99}
+  .ask[hidden]{display:none}
+  .askb{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:18px;max-width:330px}
+  .askr{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ok);color:#05231a;padding:10px 18px;border-radius:10px;font-weight:600;opacity:0;transition:.25s}
+  .toast.show{opacity:1}
+  .ch{display:flex;align-items:center;gap:8px;margin-bottom:10px} .ch h2{margin:0;flex:1}
+  /* dock: monitor and log outside the tabs */
+  #logs{display:flex;flex-direction:column;padding-left:12px;padding-right:12px} .lg{flex:1 0 130px;overflow:auto} #pulse,#pulseTop{font-size:12px} #pulse td,#pulse th{padding:5px 3px;white-space:nowrap}
+  #pulse thead th{position:sticky;top:0;background:var(--card)} #pulse td:last-child{max-width:200px;overflow:hidden;text-overflow:ellipsis}
+  .n{text-align:right} .bad{color:var(--dz)} .amb{color:#f59e0b}
+  /* header in column 1: the dock starts at the top */
+  @media(min-width:1024px){.wrap{max-width:1280px;padding-bottom:14px} #gate{max-width:748px;margin:auto}
+    .wrap:has(#app:not(.hide)){display:grid;grid-template-columns:minmax(0,1fr) clamp(360px,31vw,400px);grid-template-rows:auto 1fr;column-gap:14px;align-items:start} #app:not(.hide){display:contents}
+    #dock{grid-area:1/2/3;position:sticky;top:14px;height:calc(100vh - 28px);overflow:auto;display:flex;flex-direction:column}
+    #logs{flex:1 0 auto;margin:0}}
+  .mn-vit{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+  .mn-c{border:1px solid var(--ln);border-radius:12px;padding:6px 10px;min-width:0;line-height:1.35} .mn-c.off{display:none}
+  .mn-h{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--mut);white-space:nowrap}
+  .mn-d{flex:none;width:9px;height:9px;border-radius:50%;background:var(--ln)}
+  .mn-d.g{background:#22c55e;box-shadow:0 0 6px #22c55e} .mn-d.y{background:#f59e0b;box-shadow:0 0 6px #f59e0b} .mn-d.r{background:#ef4444;box-shadow:0 0 6px #ef4444}
+  .mn-d.y,.mn-d.r{animation:mnb 1s infinite} @keyframes mnb{50%{opacity:.3}}
+  .mn-v{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+  .mn-s{font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:14px}
+  #mn_cv{display:block;width:100%;height:160px;border:1px solid var(--ln);border-radius:12px;background:var(--in)}
+  .mn-kv>div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--ln);font-size:13px}
+  .mn-kv .v{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+  /* ── super-pro polish: feedback, elevation, focus, loading (UI only) ── */
+  button,input,select,.vtab,.pill,tbody tr{transition:background .15s,border-color .15s,box-shadow .15s,transform .08s,filter .15s}
+  button:hover:not(:disabled){filter:brightness(1.08)} button:active:not(:disabled){transform:translateY(1px)}
+  .ghost:hover:not(:disabled),.dz:hover:not(:disabled){background:var(--ln)}
+  :focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+  input:focus,select:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 22%,transparent)}
+  .card{box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 18px rgba(0,0,0,.06)}
+  :root:not([data-theme=light]) .card{box-shadow:0 1px 2px rgba(0,0,0,.25),0 8px 24px rgba(0,0,0,.3)}
+  tbody tr:hover td{background:var(--in)}
+  .vtab:hover{background:var(--in)} .vtab[aria-selected=true]{background:var(--in);color:var(--ac);font-weight:600}
+  .pill:hover{border-color:var(--ac)}
+  #gate{max-width:400px;margin-left:auto;margin-right:auto}
+  .sk{position:relative;overflow:hidden;background:var(--in);border-radius:8px;min-height:1em;color:transparent!important}
+  .sk::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--tx) 8%,transparent),transparent);transform:translateX(-100%);animation:sh 1.3s infinite}
+  @keyframes sh{100%{transform:translateX(100%)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hd"><img src="/admin/logo.png" alt="53ON" width="40" height="40"><div><h1>53ON AI Server <span class="mut" style="font-weight:400" data-t="panel"></span></h1>
+  <div class="sub" data-t="subtitle"></div></div>
+  </header>
+
+  <div id="gate" class="card">
+    <h2 data-t="access"></h2>
+    <label data-t="admin_token"></label>
+    <div class="row"><div><input id="tok" type="password" placeholder="admin_token"></div><div style="flex:0"><button onclick="enter()" data-t="log_in"></button></div></div>
+    <div id="gerr" class="mut sp"></div>
+  </div>
+
+  <div id="app" class="hide">
+    <aside id="dock">
+      <div id="mon" class="card">
+        <div class="ch"><button id="mn_fold" class="tg ghost" onclick="monFold()" data-tt="mon_fold" style="min-width:30px;padding:4px 8px">▾</button><h2 data-t="monitor"></h2><span id="mn_st" class="pill"></span><button class="tg" data-tt="mon_wipe" onclick="monWipe()">🗑</button><button id="mn_tg" class="tg danger" onclick="monToggle()">⏸</button></div>
+        <canvas id="mn_cv"></canvas><div id="mn_vit" class="mn-vit sp"></div><div id="mn_ia" class="sp"></div>
+      </div>
+      <div id="logs" class="card">
+        <div class="ch"><h2 data-t="activity"></h2><button class="tg" data-tt="report_tip" onclick="copyReport()">📋 <span data-t="report"></span></button></div>
+        <div id="pulseTop" class="mut">—</div>
+        <div class="lg"><table id="pulse"><thead><tr><th data-t="time"></th><th data-t="status"></th><th class="n" data-tt="in_tip" data-t="prompt"></th><th class="n" data-tt="cache_tip" data-t="reused"></th><th class="n" data-tt="out_tip" data-t="output"></th><th class="n" data-tt="tps_tip">Tok/s</th><th class="n" data-t="duration"></th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </aside>
+    <div class="tabwrap">
+      <nav class="vtabs" role="tablist" aria-orientation="vertical">
+        <button class="vtab" role="tab" data-tab="status" data-tt="status" aria-selected="true"><span class="ti">📊</span><span class="tl" data-t="status"></span></button>
+        <button class="vtab" role="tab" data-tab="models" data-tt="models" aria-selected="false"><span class="ti">🧠</span><span class="tl" data-t="models"></span></button>
+        <button class="vtab" role="tab" data-tab="cloud" data-tt="cloud" aria-selected="false"><span class="ti">☁️</span><span class="tl" data-t="cloud"></span></button>
+        <button class="vtab" role="tab" data-tab="keys" data-tt="keys" aria-selected="false"><span class="ti">🔑</span><span class="tl" data-t="keys"></span></button>
+        <button class="vtab" role="tab" data-tab="options" data-tt="settings" aria-selected="false"><span class="ti">⚙️</span><span class="tl" data-t="settings"></span></button>
+        <button class="vtab" role="tab" data-tab="about" data-tt="about" aria-selected="false"><span class="ti">ℹ️</span><span class="tl" data-t="about"></span></button>
+      </nav>
+      <div class="vpanes">
+    <div class="card" data-pane="status" role="tabpanel">
+      <h2 data-t="status"></h2>
+      <div id="state"></div>
+      <div id="mn_vx" class="mn-vit sp"></div><div id="mn_kv" class="mn-kv sp"></div>
+    </div>
+
+    <div class="card" data-pane="models" role="tabpanel" hidden>
+      <h2 data-t="models"></h2>
+      <div id="mperf"></div>
+      <div class="msec">⚙️ <span data-t="image_gen"></span></div>
+      <div id="drawer" class="sp"></div>
+      <div id="models" class="sp"></div>
+      <div id="med" class="med sp" hidden></div>
+      <div id="today" class="sp"></div>
+      <details id="uh" class="uhist" hidden><summary></summary><div class="mn-kv"></div></details>
+      <details class="sp" ontoggle="this.open&&tplLoad()"><summary>🧩 <span data-t="layer"></span></summary><textarea id="tpl_sys" rows="3" style="width:100%;margin-top:8px;font:12px/1.4 monospace" data-tp="layer_ph"></textarea><button class="tg" onclick="tplSave()" data-t="save"></button><pre id="tpl" class="mut" style="white-space:pre-wrap;font-size:12px;max-height:50vh;overflow:auto;margin:8px 0 0"></pre></details>
+    </div>
+
+    <div class="card" data-pane="cloud" role="tabpanel" hidden>
+      <h2 data-t="cloud"></h2>
+      <div class="mut" data-t="cloud_note"></div>
+      <div id="cloudp" class="sp"></div>
+      <details class="sp" ontoggle="this.open&&ccLoad()"><summary>📚 <span data-t="cc_title"></span></summary><div id="ccb"></div></details>
+    </div>
+
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="connection"></h2>
+      <label data-t="home_net"></label>
+      <div id="lan" class="mut"></div>
+      <label class="sp" data-t="internet"></label>
+      <div id="pub" class="mut"></div>
+      <div class="sp"><button class="ghost" style="flex:0" onclick="testConn()" data-t="test_conn"></button> <span id="testout" class="mut" style="margin-left:8px"></span></div>
+    </div>
+
+    <div class="card" data-pane="about" role="tabpanel" hidden>
+      <h2 data-t="about"></h2>
+      <div id="about"></div>
+    </div>
+
+    <div class="card" data-pane="keys" role="tabpanel" hidden>
+      <h2 data-t="api_keys"></h2>
+      <div class="row" style="align-items:flex-start">
+        <div><label data-t="name"></label><input id="kname" data-tp="name_ph"></div>
+        <div style="position:relative"><label data-t="tokens"></label>
+          <div style="display:flex;gap:4px">
+            <input id="kquota" type="text" value="1.00M" data-tp="quota_ph" style="flex:1;min-width:0">
+            <button type="button" class="ghost" onclick="togglePresets()" data-tt="plans" style="flex:0 0 auto;padding:0 11px">▾</button>
+          </div>
+          <div id="chipsT" hidden style="position:absolute;left:0;right:0;top:100%;z-index:25;background:#fff;border:1px solid #dfe3ec;border-radius:9px;box-shadow:0 6px 20px rgba(0,0,0,.12);padding:4px;margin-top:3px"></div>
+        </div>
+        <div><label data-t="months"></label><input id="kmonths" type="number" min="0" step="1" value="1"></div>
+        <div><label data-t="day_tokens"></label><input id="kday" type="text" value="0" data-tp="day_ph" data-tt="day_tip"></div>
+        <div><label data-t="images"></label><select id="kimg"></select></div>
+
+        <div style="flex:0"><button onclick="addKey()" data-t="key_create"></button></div>
+      </div>
+      <div class="mut" style="margin-top:6px" data-t="keys_note"></div>
+      <table id="keys"><thead><tr><th data-t="name"></th><th data-t="key"></th><th data-t="usage_quota"></th><th></th></tr></thead><tbody></tbody></table>
+      <div id="krot" class="sp"></div>
+    </div>
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="appearance"></h2>
+      <label data-t="theme"></label>
+      <div id="themeSeg" class="row" style="gap:6px">
+        <button class="tg" data-th="" onclick="setTheme('')">🌓 <span data-t="th_system"></span></button>
+        <button class="tg" data-th="light" onclick="setTheme('light')">☀️ <span data-t="th_light"></span></button>
+        <button class="tg" data-th="dark" onclick="setTheme('dark')">🌙 <span data-t="th_dark"></span></button>
+      </div>
+    </div>
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="language"></h2>
+      <select id="lang" style="max-width:200px" onchange="setLang(this.value)"></select>
+    </div>
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="engine_update"></h2>
+      <div id="engine"></div>
+    </div>
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="server"></h2>
+      <div class="row">
+        <div><label data-t="public_url"></label><input id="puburl" data-tp="public_url_ph"></div>
+        <div style="max-width:92px"><label data-t="max_conc"></label><input id="maxc" type="number" min="1" value="1"></div>
+        <div style="max-width:200px"><label><span data-t="ctx_cap"></span> <span id="ctxtag" class="pill" style="font-size:10px;padding:1px 7px;margin-left:6px"></span></label><input id="ctxcap" type="number" min="1024" step="1024" value="8192" oninput="ctxTag()" data-tt="ctx_tip"></div>
+        <div style="flex:0"><button onclick="saveCfg()" data-t="save"></button></div>
+      </div>
+    </div>
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="pricing"></h2>
+      <label data-t="cost"></label>
+      <div class="row"><div style="max-width:200px"><input id="costtok" type="number" min="0" step="0.01" data-tp="cost_ph" data-tt="cost_tip" onchange="saveCost()"></div></div>
+      <div class="mut" style="font-size:12px;margin-top:6px" data-t="cost_note"></div>
+    </div>
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="usage_data"></h2>
+      <div class="mut" style="font-size:12px" data-t="usage_note"></div>
+      <div class="sp"><button class="danger" onclick="wipeData()">🗑 <span data-t="usage_wipe"></span></button></div>
+    </div>
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="user_keys"></h2>
+      <div class="mut" style="font-size:12px" data-t="keys_file"></div>
+      <div class="sp row" style="gap:6px">
+        <button class="tg" onclick="keysOut()">⬇ <span data-t="export"></span></button>
+        <button class="tg" onclick="$('#keysin').click()">⬆ <span data-t="import"></span></button>
+        <input id="keysin" type="file" accept=".json,application/json" hidden onchange="keysIn(this)">
+      </div>
+    </div>
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="security"></h2>
+      <label data-t="admin_token"></label>
+      <div class="row"><div><input id="ntok" type="password" autocomplete="new-password" data-tp="token_ph"></div>
+        <div style="flex:0"><button class="ghost" onclick="setTok(1)" data-tt="token_gen_tip" data-t="generate"></button></div>
+        <div style="flex:0"><button onclick="setTok()" data-t="change"></button></div></div>
+      <div id="ntokout" class="sp"></div>
+    </div>
+    <div class="card" data-pane="options" role="tabpanel" hidden>
+      <h2 data-t="session"></h2>
+      <div class="mut" style="font-size:12px" data-t="log_out_note"></div>
+      <div class="sp"><button class="ghost" onclick="logout()" data-t="log_out"></button></div>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+#drawer label,#drawer select{display:inline-flex;align-items:center;width:auto;margin:0 6px 0 0}#drawer input{width:auto;margin:0 5px 0 0}
+.krow{display:flex;gap:6px}.krow input{flex:1;min-width:0}
+#cloudp label{display:block;font-size:11px;color:#6b7280;margin-bottom:3px}
+#cloudp input,#cloudp select{width:100%;box-sizing:border-box}
+#cloudp input:disabled{background:#f2f4f9;color:#8a93a6}
+.msec{font-weight:700;font-size:12px;letter-spacing:.3px;color:#44506b;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #e6e9f0}
+.msec:first-child{margin-top:4px}
+.tabwrap{display:flex;gap:14px;align-items:flex-start}
+.vtabs{display:flex;flex-direction:column;gap:2px;flex:0 0 158px;position:sticky;top:14px}
+.vtab{display:flex;align-items:center;gap:8px;text-align:left;background:transparent;border:0;padding:9px 11px;border-radius:9px;cursor:pointer;font:inherit;font-size:13px;color:#44506b}
+.vtab .ti{font-size:15px;line-height:1}
+.vtab[hidden]{display:none}
+.mdl{padding:7px 0;border-bottom:1px solid var(--ln);margin:0}
+.mdl .lbtn{flex:0 0 auto;width:38px;padding:6px 0;font-size:13px}
+.hbtn{width:18px;height:18px;margin-left:6px;cursor:pointer;vertical-align:middle}
+#askm{white-space:pre-line}
+.ebtn{flex:0 0 auto;width:34px;padding:6px 0;font-size:13px;background:var(--in);border:1px solid var(--ln);color:var(--tx)}
+.msec .ebtn{float:right;width:28px;padding:1px 0;margin-top:-3px;font-size:15px;line-height:1.2}
+.med{border:1px solid var(--ln);border-radius:12px;padding:10px 14px 14px}
+.med textarea{width:100%;box-sizing:border-box;background:var(--in);border:1px solid var(--ln);color:var(--tx);border-radius:9px;padding:8px 10px;font:12px/1.4 monospace}
+.med .caps label{display:inline-flex;align-items:center;gap:5px;margin:4px 14px 4px 0;font-size:13px;color:var(--tx)}
+.med .caps input{width:auto}
+.med .samp{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.med .samp input{padding:6px 7px;font-size:13px}
+.mdl code{font-weight:600}
+.mdl .pill{font-size:11px;padding:1px 8px;margin:4px 4px 0 0}
+.mdl .pill.bad{border-color:var(--dz)}
+.vtab:hover{background:#eef2ff}
+.vtab[aria-selected="true"]{background:#2a4bd7;color:#fff;font-weight:600}
+.vpanes{flex:1;min-width:0}
+.vpanes>.card{margin-top:0}
+@media(min-width:1024px) and (max-width:1179px){.vtabs{flex-basis:46px}.vtab .tl{display:none}}
+/* below 1024px the tab bar becomes a bottom row */
+@media(max-width:1023px){
+  .tabwrap{flex-direction:column;align-items:stretch}
+  /* top:auto and flex:none reset the desktop sticky values: a fixed element with both top and bottom
+     stretches between them (measured 754px tall). safe-area = the iPhone home bar. */
+  .vtabs{position:fixed;top:auto;left:0;right:0;bottom:0;flex:none;z-index:40;flex-direction:row;gap:0;width:100%;
+    background:var(--cardbg,#fff);border-top:1px solid #e6e9f0;box-shadow:0 -2px 14px rgba(0,0,0,.07);
+    padding:4px 2px calc(4px + env(safe-area-inset-bottom,0px))}
+  .vtab{flex:1 1 0;min-width:0;min-height:44px;flex-direction:column;justify-content:center;
+    align-items:center;gap:2px;padding:4px 2px;text-align:center}
+  .vtab .ti{font-size:18px}
+  .vtab .tl{font-size:10px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .vtab[aria-selected="true"]{background:transparent;color:#2a4bd7;font-weight:700}
+  body{padding-bottom:70px}
+  #mn_cv{height:130px} .mn-vit{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:104px;overflow-x:auto}
+  /* pinned dock, cards side by side or a swipe apart; min-width:0 or the canvas widens it */
+  #dock{position:sticky;top:0;z-index:30;background:var(--bg);display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-top:8px}
+  #dock>.card{flex:1 0 min(92%,360px);min-width:0;scroll-snap-align:start;margin-bottom:8px}
+}
+.ed-num{border:1px solid #dfe3ec;background:#fff;border-radius:6px;padding:2px 5px;font:inherit;font-size:11px}
+.kmenu .mi{display:block;width:100%;text-align:left;margin:1px 0;padding:6px 9px;font-size:12px}
+.preI{display:block;width:100%;text-align:left;border:0;background:transparent;padding:6px 9px;border-radius:7px;cursor:pointer;font:inherit;font-size:12px;color:#44506b}
+.preI:hover{background:#eef2ff;color:#2a4bd7}
+/* theme tokens, not fixed colors — correct in light AND dark (general-software theming) */
+.vtab{color:var(--mut)}
+.vtab:hover{background:var(--in)}
+.vtab[aria-selected="true"]{background:var(--ac);color:#fff}
+.msec{color:var(--tx);border-bottom-color:var(--ln)}
+.ed-num{border-color:var(--ln);background:var(--in);color:var(--tx)}
+.preI{color:var(--mut)}
+.preI:hover{background:var(--in);color:var(--ac)}
+#cloudp input:disabled{background:var(--in);color:var(--mut)}
+#chipsT,.kmenu{background:var(--card)!important;border-color:var(--ln)!important}
+.kname-ed:focus{background:var(--in)!important;border-color:var(--ln)!important}
+#mon.fold #mn_vit,#mon.fold #mn_ia{display:none}
+/* Modelos */
+.spd:empty{display:none}
+@media(min-width:1024px){#mperf .mn-vit{grid-template-columns:repeat(auto-fit,minmax(88px,1fr))}}
+#drawer .dnote{font-size:12px;color:var(--mut);margin-top:6px;line-height:1.5}
+.mn-kv code{font-size:11px}
+.u7{display:flex;align-items:flex-end;gap:6px;height:84px;margin-top:8px}
+.u7 b{font-size:10px;font-weight:600;color:var(--mut);margin-bottom:2px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.u7>div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.u7 i{display:block;width:100%;max-width:34px;border-radius:5px 5px 2px 2px;background:var(--ac);opacity:.75;min-height:2px}
+.u7 .td i{opacity:1;background:var(--ok)}
+.u7 span{font-size:10px;color:var(--mut);margin-top:3px;white-space:nowrap}
+#uh summary{cursor:pointer;font-size:12px;color:var(--mut);margin-top:8px}
+#mn_fold{transition:transform .15s}
+@media(max-width:1023px){.vtabs{background:var(--card);border-top-color:var(--ln)}.vtab[aria-selected="true"]{color:var(--ac)}}
+</style>
+<div id="toast" class="toast"></div>
+<div id="ask" class="ask" hidden><div class="askb"><div id="askm"></div><div class="askr"><button class="ghost" id="askn" data-t="cancel"></button><button id="asky" data-t="ok"></button></div></div></div>
+
+<script>
+let TOK = '', DL = [], LANU = '', KEY0 = '', IMGS = [], IMGW = 0, REL = null;
+const $ = s => document.querySelector(s);
+// words: the server's i18n.js (53ON Harness's) hands the page its bag, lang/<code>.json ui.*; __() as in 53ON
+const I18N = /*i18n*/{}, T = I18N.t || {};
+const __ = (k, v) => { let s = T[k]; if (s == null) s = k; if (v) for (const n in v) s = s.split('{' + n + '}').join(v[n]); return s; };
+document.documentElement.lang = I18N.lang || 'en';
+document.querySelectorAll('[data-t],[data-tt],[data-tp]').forEach(e => { const d = e.dataset; if (d.t) e.textContent = __(d.t); if (d.tt) e.title = __(d.tt); if (d.tp) e.placeholder = __(d.tp); });
+// help: a card whose title has a help_<key> text gets the house help icon, which explains it (the ask box, with OK only)
+document.querySelectorAll('.card > h2[data-t]').forEach(h => { if (T['help_' + h.dataset.t]) h.insertAdjacentHTML('beforeend', `<img class="hbtn" src="/admin/help.svg" alt="?" data-h="help_${h.dataset.t}" title="${__('help')}">`); });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.hbtn'); if (b) { $('#askn').hidden = true; ask(__(b.dataset.h)).then(() => { $('#askn').hidden = false; }); } });
+// image compatibility, name-free: the drawer model is whatever the server has loaded, so a new model needs no key edit
+const IMGOPT = [['', __('img_none')], ['create', __('img_create')], ['edit', __('img_edit')], ['both', __('img_both')]];
+const imgOpts = v => IMGOPT.map(([k, t]) => `<option value="${k}"${k === (v || '') ? ' selected' : ''}>${t}</option>`).join('');
+const esc = t => String(t == null ? '' : t).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+// Paint only on change: no flicker, open selects and typing survive
+const put = (s, h) => { const e = $(s); if (!e || e._h === h) return 0; e.innerHTML = e._h = h; return 1; };
+const val = (s, v) => { const e = $(s); if (e && e._v !== v) e.value = e._v = v; };
+const tx = (e, t) => { if (e.textContent !== t) e.textContent = t; };
+const fmtK = (n) => { n = +n || 0; if (n >= 1e6 && n % 1e6 === 0) return (n / 1e6) + 'M';
+  if (n % 1048576 === 0) return (n / 1048576) + 'M';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n % 1024 === 0) return (n / 1024) + 'K';
+  return n >= 1000 ? Math.round(n / 1000) + 'K' : n; };
+let CLP = [], TOOLS = {};
+const CST = { off: '⚫ ' + __('st_off'), ok: '🟢 ' + __('st_ok'), no_balance: '🔴 ' + __('st_no_balance'), bad_key: '🔴 ' + __('st_bad_key'),
+              rate_limit: '🟠 ' + __('st_rate_limit'), down: '⚫ ' + __('st_down'), error: '🔴 ' + __('error'), no_key: '⚪ ' + __('st_no_key') };
+const ago = (t) => { const s = Math.round((Date.now() - t) / 1000); if (!t) return '';
+  return s < 60 ? __('ago_s', [s]) : s < 3600 ? __('ago_m', [Math.round(s / 60)]) : __('ago_h', [Math.round(s / 3600)]); };
+
+// Cloud tab: provider credentials only; its models are picked in the models tab. A stored key never comes back from the server.
+let CPROV = '';
+async function cloudRender() {
+  let d; try { d = await api('/cloud'); } catch (e) { return; }
+  CLP = d.providers || [];
+  const box = $('#cloudp'); if (!box) return;
+  if (!CPROV || !CLP.some(p => p.id === CPROV)) CPROV = (CLP.find(p => p.hasKey) || CLP[0] || {}).id || '';
+  const p = CLP.find(x => x.id === CPROV) || {};
+  const led = p.state ? (CST[p.state] || esc(p.state)) : (p.hasKey ? '⚪ ' + __('st_unchecked') : '');
+  const det = [p.msg ? esc(p.msg) : '', p.at ? ago(p.at) : ''].filter(Boolean).join(' · ');
+  box.innerHTML =
+      '<label>' + __('provider') + '</label>'
+    + '<select id="cpsel">' + CLP.map(x => '<option value="' + x.id + '"' + (x.id === CPROV ? ' selected' : '') + '>'
+        + (x.hasKey ? '🟢 ' : '') + esc(x.label) + '</option>').join('') + '</select>'
+    + (p.editable
+        ? '<label class="sp">' + __('base_url') + '</label><input id="cb_url" placeholder="https://…/v1" value="' + esc(p.baseUrl || '') + '">'
+        : '')
+    + '<label class="sp">' + __('api_key') + ' ' + (led ? '<span class="pill">' + led + '</span>' : '')
+      + (p.keyUrl ? ' <a class="mut" target="_blank" rel="noopener" href="' + esc(p.keyUrl) + '">' + __('get_key') + '</a>' : '') + '</label>'
+    + '<div class="krow"><input id="ck_key" type="password" autocomplete="off" placeholder="'
+      + (p.hasKey ? __('key_saved_ph') : __('key_ph')) + '">'
+      + '<button class="tg ghost" id="ckeye" title="' + __('show') + '">👁</button>'
+      + (p.hasKey ? '<button class="tg danger" id="ckdel" title="' + __('key_del_tip') + '">✕</button>' : '') + '</div>'
+    + (det ? '<div class="mut" style="font-size:11px;margin-top:4px">' + det + '</div>' : '')
+    + '<div class="sp" style="display:flex;gap:6px"><button id="cbsave">' + __('save') + '</button>'
+      + (p.hasKey ? '<button class="ghost" id="cbtest" style="flex:0">' + __('test') + '</button>' : '') + '</div>';
+  $('#cpsel').onchange = function () { CPROV = this.value; cloudRender(); };
+  $('#ckeye').onclick = function () { const i = $('#ck_key'); i.type = i.type === 'password' ? 'text' : 'password'; };
+  $('#cbsave').onclick = function () { cloudSave(CPROV); };
+  if ($('#ckdel')) $('#ckdel').onclick = function () {
+    ask(__('key_del_ask', [p.label])).then(function (v) { if (v) cloudSave(CPROV, true); });
+  };
+  if ($('#cbtest')) $('#cbtest').onclick = function () { cloudProbe(CPROV, $('#cbtest')); };
+}
+async function cloudProbe(id, btn) {
+  const old = btn.textContent; btn.textContent = '…'; btn.disabled = true;
+  try {
+    const r = await api('/cloud/probe', 'POST', { provider: id });
+    toast((CST[r.state] || '⚠️') + (r.msg ? ' · ' + String(r.msg).slice(0, 70) : ''));
+  } catch (e) { toast(__('no_server')); }
+  btn.textContent = old; btn.disabled = false;
+  cloudRender();
+}
+// del = explicit delete (✕ with confirmation); otherwise an empty field keeps the stored key
+async function cloudSave(id, del) {
+  const k = $('#ck_key'), bu = $('#cb_url');
+  const body = { provider: id };
+  if (del) body.key = '';
+  else if (k && k.value.trim()) body.key = k.value.trim();
+  if (bu) body.baseUrl = bu.value.trim();
+  try { const r = await api('/cloud', 'POST', body); toast(r && r.ok ? (del ? __('key_deleted') : __('cfg_saved')) : __('not_saved')); }
+  catch (e) { toast(__('not_saved')); }
+  cloudRender();
+  refresh();
+}
+function vtab(id) {
+  document.querySelectorAll('.vtab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
+  document.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== id; });
+  try { localStorage.setItem('ia_tab', id); } catch (_) {}
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.vtab'); if (b) vtab(b.dataset.tab); });
+function vtabRestore() { let t = ''; try { t = localStorage.getItem('ia_tab'); } catch (_) {} vtab([...document.querySelectorAll('.vtab')].some(b => b.dataset.tab === t && !b.hidden) ? t : 'status'); }
+// Live monitor (dock): polls /metrics while signed in and visible; fixed ring buffer, full repaint.
+const MN_N = 150, MN = { on: true, dead: 0, err: '', tm: 0, busy: 0, since: 0, acc: 0, lastT: 0, head: 0, n: 0 };
+let MJ = null, LS = null, LP = [];   // last metrics, state and pulse rows, for the support report (never a key)
+// Modelos: Estado's tile; speed = engine timings already in the pulse (no extra load on the AI)
+const mtile = (h, v, s, tip) => `<div class="mn-c"${tip ? ` title="${esc(tip)}"` : ''}><div class="mn-h">${h}</div><div class="mn-v">${v}</div>${s ? `<div class="mn-s">${s}</div>` : ''}</div>`;
+const fmtS = v => String(Math.round(v * 10) / 10);
+function perfOf(n) {
+  const R = LP.filter(e => e.model === n), ok = R.filter(e => e.ok), w = ok.map(e => +e.tps).filter(v => v > 0).sort((a, b) => a - b), k = w.length, q = f => w[Math.round(f * (k - 1))];
+  let dn = 0, da = 0, cn = 0, pn = 0, rp = 0, pm = 0; ok.forEach(e => { dn += +e.dn || 0; da += +e.da || 0; cn += +e.cn || 0; pn += +e.pn || 0; if (+e.pms) { rp += +e.pn || 0; pm += +e.pms; } });
+  return { n: ok.length, bad: R.length - ok.length, k, w: k ? (k % 2 ? w[k >> 1] : (w[k / 2 - 1] + w[k / 2]) / 2) : null, lo: w[0], hi: w[k - 1], p25: q(.25), p75: q(.75),
+    avg: k && w.reduce((a, v) => a + v) / k, rd: pm ? Math.round(rp * 1000 / pm) : null, mtp: dn ? Math.round(100 * da / dn) : null, hit: cn + pn ? Math.round(100 * cn / (cn + pn)) : null, since: R.length ? R[R.length - 1].t : '' };
+}
+// cloud t/s = output over the whole wait, hence ~
+const spdTip = (p, c) => (c ? __('spd_cloud') : __('spd_local')) + ' · ' + __('spd_median', [p.k])
+  + (p.k > 1 ? ' · ' + __('spd_stats', [fmtS(p.avg), fmtS(p.p25), fmtS(p.p75), fmtS(p.lo), fmtS(p.hi)]) : '');
+function paintPerf() {
+  document.querySelectorAll('.spd').forEach(e => { const p = perfOf(e.dataset.m), c = e.dataset.c; tx(e, p.w == null ? '' : `⚡ ${c ? '~' : ''}${fmtS(p.w)} t/s`); e.title = p.w == null ? '' : spdTip(p, c); });
+  const seen = {}; LP.forEach(e => { if (e.ok && e.model) seen[e.model] = (seen[e.model] || 0) + 1; });
+  const L = Object.keys(seen).sort((a, b) => seen[b] - seen[a]).slice(0, 3);
+  put('#mperf', L.length ? L.map(n => {
+    const p = perfOf(n), c = (DL.find(x => x.name === n) || {}).cloud, l = VRAM[n];
+    return `<div class="msec">⚡ ${__('perf')} · <code>${esc(n)}</code></div><div class="mn-vit">`
+      + mtile(__('writes'), p.w == null ? '—' : (c ? '~' : '') + fmtS(p.w) + ' t/s', p.k > 3 ? __('typical', [Math.round(p.p25), Math.round(p.p75)]) : p.k ? __('n_resp', [p.k]) : __('no_answers'), p.w == null ? '' : spdTip(p, c))
+      + (p.rd == null ? '' : mtile(__('reads'), p.rd + ' t/s', __('new_prompt'), __('reads_tip')))
+      + (p.mtp == null ? '' : mtile('MTP', p.mtp + '%', __('hits'), __('mtp_hits_tip')))
+      + (p.hit == null ? '' : mtile(__('cache'), p.hit + '%', __('not_reread'), __('cache_hit_tip')))
+      + mtile(__('responses'), p.n, (p.since ? __('since', [esc(p.since)]) : '') + (p.bad ? ' · ' + __('n_err', [p.bad]) : ''))
+      + (c ? '' : l ? mtile(__('memory'), l.vram_gb + ' GB', l.gpu_pct + '% GPU', l.ctx ? __('ctx_served', [fmtK(l.ctx)]) : '') : mtile(__('memory'), '—', __('stopped')))
+      + '</div>';
+  }).join('') : '');
+}
+let UD = null;   // last /usage
+function paintUsage() {
+  if (!UD) return;
+  const t = UD.today || {}, dy = k => (UD.days || {})[k] || {}, tot = u => (u.in || 0) + (u.out || 0),
+    ds = [...Array(7)].map((_, i) => new Date(Date.now() - (6 - i) * 864e5).toISOString().slice(0, 10)), v = ds.map(k => tot(dy(k))), mx = Math.max(1, ...v),
+    h0 = new Date(new Date().setUTCHours(0, 0, 0, 0)).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+    have = new Set(DL.map(m => m.name).concat(IMGS.map(m => m.id))), M = Object.entries(UD.models || {}).sort((a, b) => tot(b[1]) - tot(a[1])),
+    row = ([n, u]) => `<div><code>${esc(n)}</code><span class="v">${fmtT(tot(u))} tok · ${__('n_req', [(u.req || 0).toLocaleString()])}${u.img ? ' · ' + u.img + ' img' : ''}${u.usd ? ' · $' + (+u.usd).toFixed(2) : ''}</span></div>`,
+    A = M.filter(x => have.has(x[0])), B = M.filter(x => !have.has(x[0]));
+  put('#today', `<div class="msec">📈 ${__('today_usage')} <span class="mut">· ${__('utc_day', [h0])}</span></div><div class="mn-vit">`
+    + mtile(__('tokens'), fmtT(tot(t)), __('in_out', [fmtT(t.in || 0), fmtT(t.out || 0)])) + mtile(__('requests'), (t.req || 0).toLocaleString())
+    + (t.img ? mtile(__('images'), t.img) : '') + (t.usd ? mtile(__('cloud'), '$' + (+t.usd).toFixed(4), __('real_cost')) : '')
+    + '</div><div class="u7">' + ds.map((k, i) => `<div${i === 6 ? ' class="td"' : ''} title="${k} UTC · ${__('n_req', [(dy(k).req || 0).toLocaleString()])}${dy(k).img ? ' · ' + dy(k).img + ' img' : ''}">`
+      + `<b>${v[i] ? fmtT(v[i]) : ''}</b><i style="height:${Math.max(2, Math.round(v[i] / mx * 62))}%"></i><span>${i === 6 ? __('today') : k.slice(8) + '/' + k.slice(5, 7)}</span></div>`).join('')
+    + '</div>' + (M.length ? '<div class="msec">🧮 ' + __('by_model') + '</div><div class="mn-kv">' + (A.map(row).join('') || '<div class="mut">—</div>') + '</div>' : ''));
+  $('#uh').hidden = !B.length;
+  put('#uh summary', __('history') + ' · ' + (B.length === 1 ? __('gone_1', [B.length]) : __('gone_n', [B.length]))); put('#uh .mn-kv', B.map(row).join(''));
+}
+const MN_S = [['CPU', '#ef4444', '°C'], ['GPU', '#f97316', '°C'], [__('gpu_use'), '', '%']].map(a => ({ l: a[0], c: a[1], u: a[2], last: null, d: new Float32Array(MN_N).fill(NaN) }));
+// live vitals in the dock, slow ones in the status tab
+[['#mn_vit', [['ct', __('cpu_temp')], ['gt', __('gpu_temp')], ['nt', __('nvme_temp')], ['gb', __('gpu_use')], ['gw', __('power')], ['vr', 'VRAM'], ['gtt', 'GTT'], ['ram', 'RAM'], ['cpu', 'CPU'], ['dk', __('disk')]]], ['#mn_vx', [['ld', __('load')], ['up', __('uptime')]]]]
+  .forEach(([s, v]) => $(s).innerHTML = v.map(a => `<div class="mn-c off" id="mv_${a[0]}"><div class="mn-h"><i class="mn-d"></i>${a[1]}</div><div class="mn-v">—</div><div class="mn-s"></div></div>`).join(''));
+const monRun = () => !!TOK && !MN.dead && MN.on && !document.hidden;
+// blank slot on resume = a gap, not a line across the pause
+const mnPush = a => { MN_S.forEach((s, i) => { const v = a[i]; s.d[MN.head] = v == null ? NaN : v; if (a.length) s.last = v; }); MN.head = (MN.head + 1) % MN_N; if (MN.n < MN_N) MN.n++; };
+function monSync() {
+  if (!monRun()) { clearTimeout(MN.tm); MN.tm = 0; if (MN.since) { MN.acc += Date.now() - MN.since; MN.since = 0; } }
+  else { if (!MN.since) { MN.since = Date.now(); if (MN.n) mnPush([]); } mnDraw(); if (!MN.tm && !MN.busy) monTick(); }
+  monPill();
+}
+function monToggle() { MN.on = !MN.on; MN.err = ''; monSync(); }
+// collapse the Monitor to graph + summary (frees the Pulse log below); the state is remembered across reloads
+function monFold(v) { const m = $('#mon'); if (!m) return; const f = v == null ? !m.classList.contains('fold') : !!v; m.classList.toggle('fold', f); const b = $('#mn_fold'); if (b) b.textContent = f ? '▸' : '▾'; try { localStorage.setItem('ia_mon_fold', f ? '1' : '0'); } catch (_) {} }
+function monFoldRestore() { let f = false; try { f = localStorage.getItem('ia_mon_fold') === '1'; } catch (_) {} monFold(f); }
+// price per 1M tokens (display-only, in Opciones): Estado shows the estimated service cost of the accumulated tokens
+function saveCost() { try { localStorage.setItem('ia_cost_tok', $('#costtok').value || ''); } catch (_) {} if (LS) render(LS); }
+function costRestore() { try { $('#costtok').value = localStorage.getItem('ia_cost_tok') || ''; } catch (_) {} }
+function monPill() {
+  const s = (MN.acc + (MN.since ? Date.now() - MN.since : 0)) / 1000 | 0, p = n => String(n).padStart(2, '0'), st = $('#mn_st'), b = $('#mn_tg');
+  tx(st, MN.dead ? __('na') : MN.err || (MN.since ? __('live') + ' · ' + p(s / 60 | 0) + ':' + p(s % 60) : __('paused')));
+  st.className = 'pill' + (MN.since && !MN.err ? ' ok' : '');
+  b.textContent = MN.on ? '⏸' : '▶︎'; b.className = 'tg ' + (MN.on ? 'danger' : 'play'); b.disabled = !!MN.dead;
+}
+async function monTick() {
+  MN.tm = 0; MN.busy = 1;
+  let r = null, j = null; const k = TOK;
+  try { r = await fetch('/admin/api/metrics', { headers: { 'x-admin-token': k }, cache: 'no-store' }); if (r.ok) j = await r.json(); } catch (_) {}
+  MN.busy = 0;
+  const c = r && r.status;
+  // 401/404 never auto-retry (every error response lands in the pulse ring); 404 = server without /metrics
+  if (c === 404) { MN.dead = 1; $('#mon').hidden = true; }
+  if (c === 401 && k === TOK) drop();   // not for a token setTok() already replaced
+  MN.err = j ? '' : __('offline');
+  if (j) monApply(j);
+  if (monRun()) MN.tm = setTimeout(monTick, 2000); else monSync();
+  monPill();
+}
+const dur = s => { s = +s || 0; const d = s / 86400 | 0; return (d ? d + 'd ' : '') + (s % 86400 / 3600 | 0) + 'h ' + (s % 3600 / 60 | 0) + 'm'; };
+function mv(id, t, sub, v, y, r) {
+  const e = $('#mv_' + id), ch = e.children, d = ch[0].firstChild, k = 'mn-d' + (v == null || y == null ? '' : v >= r ? ' r' : v >= y ? ' y' : ' g');
+  e.classList.toggle('off', t == null);
+  if (d.className !== k) d.className = k;
+  tx(ch[1], t == null ? '—' : t);
+  tx(ch[2], sub || '');
+}
+// Opciones: usage + pulse on the server, then the monitor history; keys, plans and config stay
+async function wipeData() {
+  if (!await ask(__('usage_wipe_ask'))) return;
+  const r = await fetch('/admin/api/usage', { method: 'DELETE', headers: { 'x-admin-token': TOK } }).catch(() => null);
+  if (!r || !r.ok) return toast(r && r.status === 404 ? __('not_here') : __('not_cleared'));
+  await monWipe(); LP = []; toast(__('usage_wiped')); refresh(); LOGS();
+}
+// Claves de usuarios: one file out and back; the server merges and never removes
+async function keysOut() {
+  const r = await fetch('/admin/api/keys/export', { headers: { 'x-admin-token': TOK } }).catch(() => null);
+  if (!r || !r.ok) return toast(__('not_exported'));
+  const j = await r.json(), x = document.createElement('a');
+  x.href = URL.createObjectURL(new Blob([JSON.stringify(j, null, 1)], { type: 'application/json' }));
+  x.download = 'ia_server_keys_' + j.at.slice(0, 10) + '.json'; x.click(); setTimeout(() => URL.revokeObjectURL(x.href), 1e4);
+  toast(__('keys_exported', [j.keys.length]));
+}
+async function keysIn(f) {
+  const file = f.files[0]; f.value = ''; if (!file) return;
+  let j = null; try { j = JSON.parse(await file.text()); } catch (_) {}
+  if (!j || j.ia_server_keys !== 1 || !Array.isArray(j.keys)) return toast(__('not_keys_file'));
+  if (!await ask(__('keys_import_ask', [j.keys.length]))) return;
+  const r = await api('/keys/import', 'POST', j).catch(() => null);
+  toast(r && r.ok ? __('keys_imported', [r.added, r.updated]) : __('not_imported')); refresh();
+}
+// 🗑 like the log button: the kept history goes, on the server and on screen. Nothing old piles up.
+async function monWipe() {
+  try { await fetch('/admin/api/history', { method: 'DELETE', headers: { 'x-admin-token': TOK } }); } catch (_) {}
+  MN.head = MN.n = 0; MN_S.forEach(s => { s.d.fill(NaN); s.last = null; });
+  mnDraw();
+}
+// The graph opens with what the server saw while nobody was looking; the live points carry on from there.
+async function monSeed() {
+  if (MN.n) return;
+  let j; try { const r = await fetch('/admin/api/history', { headers: { 'x-admin-token': TOK }, cache: 'no-store' }); if (r.ok) j = await r.json(); } catch (_) {}
+  const h = j && j.h; if (!h || !h.length || MN.n) return;
+  h.slice(-MN_N).forEach(p => mnPush([p[1], p[2], p[3]]));
+  MN.lastT = h[h.length - 1][0];
+  mnDraw();
+}
+function monApply(j) {
+  MJ = j;
+  if (j.t === MN.lastT) return;
+  MN.lastT = j.t;
+  const c = j.cpu || {}, g = j.gpu || {}, h = j.host || {}, ms = j.models || [],
+    pc = a => a && a[1] ? Math.round(a[0] / a[1] * 100) : null,
+    gb = a => a ? (a[0] / 1024).toFixed(1) + ' / ' + (a[1] / 1024).toFixed(1) + ' GB' : '',
+    tc = v => v == null ? null : v.toFixed(1) + '°C', pct = (a) => a ? pc(a) + '%' : null;
+  mnPush([c.c, g.c, g.busy]);
+  mv('ct', tc(c.c), '', c.c, 70, 85);
+  mv('gt', tc(g.c), '', g.c, 70, 85);
+  mv('nt', tc(j.nvme_c), '', j.nvme_c, 70, 85);
+  mv('gb', g.busy == null ? null : g.busy + '%', '', g.busy, 50, 75);
+  mv('gw', g.w == null ? null : g.w.toFixed(1) + ' W', g.apu ? __('apu') : 'GPU');
+  mv('vr', pct(g.vram), gb(g.vram), pc(g.vram), 75, 90);
+  mv('gtt', pct(g.gtt), gb(g.gtt), pc(g.gtt), 75, 90);
+  mv('ram', pct(j.ram), gb(j.ram), pc(j.ram), 75, 90);
+  mv('cpu', c.pct == null ? '—' : c.pct + '%', __('cores', [h.cores]), c.pct, 50, 75);
+  mv('dk', pct(j.disk), j.disk ? gb(j.disk) + ' · ' + __('gb_free', [((j.disk[1] - j.disk[0]) / 1024).toFixed(1)]) : '', pc(j.disk), 75, 90);
+  mv('ld', c.load ? c.load[0].toFixed(2) : null, c.load ? '5 min ' + c.load[1].toFixed(2) + ' · 15 min ' + c.load[2].toFixed(2) : '');
+  mv('up', dur(j.up), __('server_up', [dur(j.srv_up)]));
+  const bar = p => `<div class="vbar${p >= 90 ? ' full' : p >= 75 ? ' warn' : ''}"><i style="width:${p}%"></i></div>`,
+    free = a => ((a[1] - a[0]) / 1024).toFixed(1);
+  let ia = '';
+  if (ms.length) {
+    const p = Math.round(ms.reduce((a, m) => a + (m.gpu_pct || 0), 0) / ms.length);
+    ia += `<div><b>${__('ai')}</b> <span class="mut">· ${p}% GPU · ${p < 100 ? __('on_cpu', [100 - p]) + ' ⚠️' : __('all_gpu')}</span></div><div class="vbar" style="background:var(--dz)"><i style="width:${p}%;background:var(--ok)"></i></div>`;
+  }
+  // one line per busy slot of the engine: how much it has read (the prompt's size is not served) or how much it wrote
+  (j.slots || []).filter(s => s.busy).forEach(s => { ia += `<div class="mut">${__('slot', [s.id])} · ${s.gen ? __('slot_gen', [fmtK(s.gen)]) : __('slot_read', [fmtK(s.done)])}</div>`; });
+  // a model on its way up and what waits, live (Strata's pill: Loading… / N queued)
+  (j.wake || []).forEach(w => { ia += `<div class="mut">⏳ ${esc(w[0])} · ${PH[w[1]] || __('loading')} · ${Math.round((Date.now() - w[2]) / 1000)} s</div>`; });
+  if (j.queued || j.jobs) ia += `<div class="mut">${[j.queued ? __('queued', [j.queued]) : '', j.jobs ? '🎨 ' + __('images_busy', [j.jobs]) : ''].filter(Boolean).join(' · ')}</div>`;
+  if (g.vram) ia += `<div class="sp"><b>${esc(g.name)}</b> <span class="mut">· ${g.busy == null ? '—' : g.busy}% ${__('use')} · ${g.c == null ? '—' : Math.round(g.c)}°C</span></div>${bar(pc(g.vram))}<div class="mut">VRAM ${gb(g.vram)} · ${__('gb_free', [free(g.vram)])}${g.vram[1] - g.vram[0] < 1200 ? ' <span class="pill">⚠️</span>' : ''}</div>`;
+  if (j.ram) ia += `<div class="sp"><b>RAM</b></div>${bar(pc(j.ram))}<div class="mut">${gb(j.ram)} · ${__('gb_free', [free(j.ram)])}</div>`;
+  put('#mn_ia', ia);
+  put('#mn_kv', `<div><span class="mut">${__('machine')}</span><span class="v">${esc(h.cpu)} · ${esc(h.os)}</span></div>`
+    + (j.gpu ? `<div><span class="mut">GPU</span><span class="v">${esc(g.name)} · ${esc(g.src)}</span></div>` : '')
+    + ms.map(m => `<div><code>${esc(m.name)}</code><span class="v">${m.vram_gb} GB · ${m.gpu_pct}% GPU · ${__('ctx_of', [fmtK(m.ctx)])}${m.pinned ? ' · ' + __('pinned') : ''}</span></div>`).join(''));
+  mnDraw();
+}
+function mnDraw() {
+  const cv = $('#mn_cv'), w = cv ? cv.clientWidth : 0, h = w && cv.clientHeight, k = devicePixelRatio || 1;
+  if (!w) return;
+  if (cv.width !== Math.round(w * k) || cv.height !== Math.round(h * k)) { cv.width = Math.round(w * k); cv.height = Math.round(h * k); }
+  const x = cv.getContext('2d'), cs = getComputedStyle(document.documentElement), V = n => cs.getPropertyValue(n).trim(), L = 30, pw = w - L - 10, ph = h - 35;
+  x.setTransform(k, 0, 0, k, 0, 0);
+  x.clearRect(0, 0, w, h);
+  x.lineWidth = 1; x.strokeStyle = V('--ln'); x.fillStyle = V('--mut');
+  x.font = '10px system-ui,sans-serif'; x.textAlign = 'right'; x.textBaseline = 'middle';
+  for (let i = 0; i < 5; i++) { const y = 10 + ph * i / 4; x.beginPath(); x.moveTo(L, y); x.lineTo(w - 10, y); x.stroke(); x.fillText(100 - i * 25, L - 6, y); }
+  x.lineWidth = 2; x.lineJoin = 'round'; x.textAlign = 'left'; x.font = 'bold 12px Inter,system-ui,sans-serif';
+  let lx = L;
+  MN_S.forEach(s => {
+    const col = s.c || V('--ac'), t = s.l + ' ' + (+s.last).toFixed(s.u === '%' ? 0 : 1) + s.u;
+    let pen = false;
+    x.strokeStyle = x.fillStyle = col; x.beginPath();
+    for (let i = 0; i < MN.n; i++) {
+      const v = s.d[(MN.head - MN.n + i + MN_N) % MN_N];
+      if (v !== v) { pen = false; continue; }
+      const px = L + pw * (MN_N - MN.n + i) / (MN_N - 1), py = 10 + ph * (1 - Math.min(100, Math.max(0, v)) / 100);
+      pen ? x.lineTo(px, py) : x.moveTo(px, py); pen = true;
+    }
+    x.stroke();
+    if (s.last != null) { x.fillText(t, lx, h - 12); lx += x.measureText(t).width + 18; }
+  });
+}
+// One chained timer per source: no overlap, no duplicates, idle while signed out or hidden. go(1) only arms it.
+const loop = (fn, ms) => { let t = 0, b = 0; const go = async a => { clearTimeout(t); t = 0; if (b || !TOK || document.hidden) return;
+  if (a !== 1) { b = 1; await fn().catch(() => {}); b = 0; } if (!t && TOK && !document.hidden) t = setTimeout(go, ms); }; return go; };
+const DATA = loop(refresh, 30000), LOGS = loop(loadPulse, 5000);
+const wake = a => { monSync(); DATA(a); LOGS(); };
+document.addEventListener('visibilitychange', wake);
+addEventListener('resize', mnDraw);
+const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); };
+let SEL = [], FREE = null;
+let VRAM = {};
+// A start says what it is doing and since when; a model that is down says why, since when and what brings it back
+// (Strata: 'model unloaded after N s idle; the next request loads it again'), with its last start measured.
+const PH = { memory: __('ph_memory'), load: __('ph_load'), restore: __('ph_restore') };
+function offTxt(m) { const o = m.off || {}; return o.why === 'crash' ? '⚠️ ' + __('crashed', [ago(o.at)]) + (o.next > Date.now() ? ' · ' + __('retry', [o.k, o.of]) : '') : ''; }
+// Drawer: bound once on the box (never inside render), no provider sent. Two selects: the model that creates and the one
+// that edits; "Apagado" on both switches the tool off. The toast comes from what the server saved, not from the click.
+const toolModel = t => typeof t.model === 'string' ? t.model : Object.keys(t.model || {}).map(k => k + '/' + t.model[k])[0] || '';   // map = old PC server until cutover
+// Only the select that changed is sent: a stale model shown in the other one must not block this change.
+$('#drawer').onchange = (e) => { const m = $('#dsel').value, ed = $('#esel').value;
+  api('/tools', 'POST', Object.assign({ tool: 'image', on: !!(m || ed) }, e.target.id === 'esel' ? { edit: ed } : { model: m }))
+    .then(r => toast(r && r.ok ? (r.on !== false && (r.model || r.edit) ? [r.model && __('draws_n', [r.model]), r.edit && __('edits_n', [r.edit])].filter(Boolean).join(' · ') : __('image_off')) : __('not_saved_model')), () => toast(__('not_saved')))
+    .then(() => { $('#drawer')._h = 0; refresh(); }); };
+// The server refuses a click that would cut live answers (409 model_busy, as Strata's unload says 'busy'): the owner decides
+async function modelPost(b) {
+  const r = await api('/model', 'POST', b), er = (r && r.error) || {};
+  return er.code === 'model_busy' && await ask(__('busy_ask', [parseInt(er.message)])) ? api('/model', 'POST', Object.assign({ force: true }, b)) : r;
+}
+// Load/unload buttons of the local rows: chat models through llama-server, image models through sd-server.
+const BUSY = {};
+$('#models').addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('.lbtn'); if (!b) return;
+  e.preventDefault();
+  const n = b.dataset.m, a = b.dataset.a;
+  BUSY[n] = a; b.disabled = true; b.textContent = '⏳';
+  // a chat load answers once its llama-server serves; an image load answers at once and keeps loading
+  try { const r = await modelPost({ model: n, action: a }), er = (r && r.error) || {};
+    toast(r && r.ok ? (a === 'unload' ? __('m_stopped', [n]) : r.image ? __('m_loading', [n]) : __('m_serving', [n]))
+      : __('failed', [er.code === 'image_busy' ? __('image_busy') : er.code === 'model_busy' ? __('model_busy') : er.message || __('server_error')])); }
+  catch (_) { toast(__('not_model')); }
+  // repaint even if the state did not change (a refused action): the button leaves its "Cargando…" text
+  delete BUSY[n]; $('#models')._h = 0; await refresh();
+});
+// Catalog editor: ✏️ edits an entry, + adds one; files are put by hand in the models folder.
+let CAT = null, ED = null;
+const SAMP = ['temperature', 'top_p', 'top_k', 'min_p', 'presence_penalty'], RM = /^(-m|--model)$/, RMM = /^(-mm|--mmproj)$/;
+const CAPS = { text: ['vision', 'video', 'audio', 'tools', 'thinking'], image: ['create', 'edit'], video: ['create', 'edit'] };
+const capTx = (k, c) => __(k === 'text' ? 'cap_' + c : (k === 'image' ? 'img_' : 'vid_') + c);
+const argAt = (a, re) => { const i = a.findIndex(x => re.test(x)); return i > -1 ? a[i + 1] || '' : ''; };
+const argRest = (a) => a.filter((x, i) => !/^(-m|--model|-mm|--mmproj)$/.test(x) && !/^(-m|--model|-mm|--mmproj)$/.test(a[i - 1] || '')).join(' ');
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ebtn'); if (b) { e.preventDefault(); catEdit(b.dataset.k, b.dataset.e); } });
+async function catEdit(k, id) {
+  try { CAT = await api('/catalog'); } catch (_) { return toast(__('no_data')); }
+  const e = id && (CAT[k] || {})[id];
+  if (id && !e) return toast(__('not_model'));
+  ED = { k: k, k0: k, id: id || '', e: e ? JSON.parse(JSON.stringify(e)) : {}, dirty: 0 };
+  medPaint(); const m = $('#med'); m.hidden = false; m.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function medPaint() {
+  const k = ED.k, e = ED.e, a = e.args || [], F = CAT.files || [], opt = (v, t, s) => `<option value="${esc(v)}"${s ? ' selected' : ''}>${esc(t)}</option>`;
+  const files = (kind, cur, none) => (none ? opt('', __('cat_none'), !cur) : '') + F.filter(f => f.kind === kind).map(f => opt(f.path,
+    f.dir + '/' + f.file + ' · ' + f.gb + ' GB' + (f.train ? ' · ' + fmtK(f.train) : '') + (f.used.length ? ' · ' + f.used.join(', ') : ''), f.path === cur)).join('')
+    + (cur && !F.some(f => f.path === cur) ? opt(cur, cur, true) : '');
+  // ticked = allowed if the model has it; never set = all (text) or its task (pictures)
+  const on = Array.isArray(e.caps) ? e.caps : k === 'text' ? CAPS.text : e.task === 'both' ? ['create', 'edit'] : [e.task || 'create'];
+  const adv = Object.assign({}, e); ['args', 'caps', 'task', 'note', 'out_max', 'think_sampling', 'instruct_sampling'].forEach(x => delete adv[x]);
+  // its files = the ones the server found it naming (realpath)
+  const mine = (kind, raw) => (ED.id && F.find(x => x.kind === kind && x.used.includes(ED.id)) || {}).path || raw;
+  const f = mine('model', argAt(a, RM)), mm = mine('eyes', argAt(a, RMM)), cur = F.find(x => x.path === f);
+  let h = `<div class="msec">${ED.id ? '✏️ ' + esc(ED.id) : '➕ ' + __('cat_add')}</div>`
+    + `<div class="mut" style="font-size:12px">${__('cat_where', ['<code>' + esc(CAT.real || CAT.dir) + '/&lt;' + __('cat_folder') + '&gt;/</code>'])}</div>`
+    + `<div class="row"><div style="max-width:150px"><label>${__('cat_type')}</label><select id="me_k" onchange="ED.k=this.value;medPaint()">${['text', 'image', 'video'].map(t => opt(t, __('ty_' + t), t === k)).join('')}</select></div>`
+    + `<div><label>${__('name')}</label><input id="me_id" value="${esc(ED.id || (k === 'image' ? 'local/' : ''))}"></div></div>`;
+  if (k === 'text') h += `<label>${__('cat_file')}</label><select id="me_f" onchange="medFile()">${f ? '' : opt('', '—', 1)}${files('model', f)}</select>`
+    + `<div id="me_tr" class="mut" style="font-size:12px;margin-top:4px">${cur && cur.train ? __('cat_train', [fmtK(cur.train)]) : ''}</div>`
+    + `<label>${__('cat_eyes')}</label><select id="me_mm">${files('eyes', mm, 1)}</select>`
+    + `<label>${__('cat_args')}</label><input id="me_args" value="${esc(ED.id ? argRest(a) : '-ngl 99 -fa on --jinja')}">`;
+  else h += `<label>${__('cat_args')}</label><textarea id="me_args" rows="3">${esc(a.join(' '))}</textarea>`
+    + (k === 'video' ? `<div class="mut" style="font-size:12px;margin-top:4px">${__('cat_no_engine')}</div>` : '');
+  h += `<label>${__('cat_caps')}</label><div class="caps">${CAPS[k].map(c => `<label><input type="checkbox" class="cap" value="${c}"${on.includes(c) ? ' checked' : ''} onchange="ED.dirty=1"> ${capTx(k, c)}</label>`).join('')}</div>`;
+  if (k === 'text') ['think_sampling', 'instruct_sampling'].forEach((s, j) => { const v = e[s] || {};
+    h += `<label>${__(j ? 'cat_instruct' : 'cat_think')} <span class="mut">· ${__('cat_blank')}</span></label><div class="samp">`
+      + SAMP.map(p => `<input id="me_s${j}_${p}" type="number" step="any" placeholder="${p}" title="${p}" value="${v[p] != null ? esc(v[p]) : ''}">`).join('') + '</div>'; });
+  h += `<div class="row">${k === 'text' ? `<div style="max-width:170px"><label>${__('cat_out')}</label><input id="me_out" type="number" min="0" value="${e.out_max || ''}"></div>` : ''}`
+    + `<div><label>${__('cat_note')}</label><input id="me_note" value="${esc(e.note || '')}"></div></div>`
+    + `<details class="sp"><summary class="mut" style="cursor:pointer;font-size:12px">${__('cat_adv')}</summary><textarea id="me_adv" rows="6">${esc(JSON.stringify(adv, null, 2))}</textarea></details>`
+    + `<div class="row sp"><div style="flex:0"><button onclick="medSave()">${__('save')}</button></div><div style="flex:0"><button class="ghost" onclick="medClose()">${__('cancel')}</button></div>`
+    + (ED.id ? `<div style="text-align:right"><button class="dz" onclick="medDel()">🗑️ ${__('cat_delete')}</button></div>` : '') + '</div>';
+  $('#med').innerHTML = h;
+}
+// a picked file names a new entry after its folder, with the only mmproj beside it
+function medFile() {
+  const f = (CAT.files || []).find(x => x.path === $('#me_f').value); if (!f) return;
+  $('#me_tr').textContent = f.train ? __('cat_train', [fmtK(f.train)]) : '';
+  const ey = CAT.files.filter(x => x.kind === 'eyes' && x.dir === f.dir);
+  if (!$('#me_mm').value && ey.length === 1) $('#me_mm').value = ey[0].path;
+  if (!$('#me_id').value.trim()) $('#me_id').value = f.dir;
+}
+function medClose() { $('#med').hidden = true; ED = null; }
+const medDone = (r, m) => { if (!r || !r.ok) return toast(__('failed', [((r || {}).error || {}).message || __('server_error')])); toast(m); medClose(); $('#models')._h = 0; refresh(); };
+// blank = not set; the advanced JSON keeps the other fields
+async function medSave() {
+  const k = $('#me_k').value, id = $('#me_id').value.trim(), words = (s) => s.trim() ? s.trim().split(/\s+/) : [];
+  let e; try { e = JSON.parse($('#me_adv').value.trim() || '{}'); } catch (_) { e = null; }
+  if (!e || typeof e !== 'object' || Array.isArray(e)) return toast(__('cat_bad_json'));
+  const caps = [...document.querySelectorAll('#med .cap:checked')].map(x => x.value);
+  if (k === 'text') {
+    if (!$('#me_f').value) return toast(__('cat_file'));
+    e.args = ['-m', $('#me_f').value].concat($('#me_mm').value ? ['--mmproj', $('#me_mm').value] : [], words($('#me_args').value));
+    if (ED.dirty || Array.isArray(ED.e.caps)) e.caps = caps;
+    ['think_sampling', 'instruct_sampling'].forEach((s, j) => { const o = {}; SAMP.forEach(p => { const v = $(`#me_s${j}_${p}`).value; if (v !== '') o[p] = +v; }); if (Object.keys(o).length) e[s] = o; });
+    if (+$('#me_out').value) e.out_max = +$('#me_out').value;
+  } else { e.args = words($('#me_args').value); e.task = caps.length > 1 ? 'both' : caps[0] || 'create'; }
+  if ($('#me_note').value.trim()) e.note = $('#me_note').value.trim();
+  medDone(await api('/catalog', 'POST', Object.assign({ type: k, id: id, entry: e }, ED.id ? { from: ED.id, from_type: ED.k0 } : {})), __('cat_saved', [id]));
+}
+// The server's cloud catalog, edited whole (the server depends on no one): the context it sends
+// per model and per provider, its default; the other provider fields in the JSON
+const ccRow = (m, n, p) => `<div class="krow cc" data-p="${esc(p)}"><input class="ccm" value="${esc(m)}" placeholder="${__('cc_model')}"><input class="ccn" type="number" min="0" value="${n || ''}"><button class="ghost" style="flex:0" onclick="this.parentNode.remove()">🗑️</button></div>`;
+const ccRows = (o, p) => Object.keys(o || {}).map(m => ccRow(m, o[m], p)).join('') + `<button class="ghost ccadd" data-p="${esc(p)}" style="padding:3px 10px;margin:4px 0">+</button>`;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ccadd'); if (b) b.insertAdjacentHTML('beforebegin', ccRow('', '', b.dataset.p)); });
+async function ccLoad() {
+  try { CAT = await api('/catalog'); } catch (_) { return toast(__('no_data')); }
+  const K = CAT.cloud || {}, P = K.providers || {}, adv = {};
+  Object.keys(P).forEach(p => { adv[p] = Object.assign({}, P[p]); delete adv[p].ctx; delete adv[p].defaultCtx; });
+  $('#ccb').innerHTML = `<div class="mut" style="font-size:12px">${__('cc_note')}</div><div class="msec">${__('cc_models')}</div>${ccRows(K.ctx, '')}`
+    + Object.keys(P).map(p => `<div class="msec">${esc(P[p].label || p)} <span class="mut">· ${esc(p)}</span></div><label>${__('cc_default')}</label>`
+      + `<input class="ccd" data-p="${esc(p)}" type="number" min="0" value="${P[p].defaultCtx || ''}">${ccRows(P[p].ctx, p)}`).join('')
+    + `<details class="sp"><summary class="mut" style="cursor:pointer;font-size:12px">${__('cat_adv')}</summary><textarea id="cc_adv" rows="10" style="width:100%;font:12px/1.4 monospace">${esc(JSON.stringify(adv, null, 2))}</textarea></details>`
+    + `<div class="sp"><button onclick="ccSave()">${__('save')}</button></div>`;
+}
+async function ccSave() {
+  let P; try { P = JSON.parse($('#cc_adv').value); } catch (_) { P = null; }
+  if (!P || typeof P !== 'object' || Array.isArray(P)) return toast(__('cat_bad_json'));
+  const rows = (p) => { const o = {}; document.querySelectorAll('#ccb .cc').forEach(r => { const m = r.querySelector('.ccm').value.trim(), n = +r.querySelector('.ccn').value; if (r.dataset.p === p && m && n > 0) o[m] = n; }); return o; };
+  Object.keys(P).forEach(p => { const d = [...document.querySelectorAll('#ccb .ccd')].find(x => x.dataset.p === p), c = rows(p);
+    if (d && +d.value) P[p].defaultCtx = +d.value; if (Object.keys(c).length) P[p].ctx = c; });
+  const r = await api('/catalog', 'POST', { type: 'cloud', catalog: { providers: P, ctx: rows('') } });
+  if (!r || !r.ok) return toast(__('failed', [((r || {}).error || {}).message || __('server_error')]));
+  toast(__('cat_saved', ['☁️'])); ccLoad(); cloudRender(); refresh();
+}
+async function medDel() {
+  if (!ED || !ED.id || !await ask(__('cat_del_ask', [ED.id]))) return;
+  medDone(await api('/catalog', 'POST', { type: ED.k0, id: ED.id, delete: true }), __('cat_deleted', [ED.id]));
+}
+// the model's own layer, rendered by the model at the chat's effort: read-only, loaded when the fold opens
+let tplM = '';
+async function tplSave() { if (!tplM) return; await api('/model/sys', 'POST', { id: tplM, sys: document.getElementById('tpl_sys').value }); tplLoad(); }
+async function tplLoad() { const e = document.getElementById('tpl'); e.textContent = '…'; try { const j = await api('/template'); tplM = j.model || ''; document.getElementById('tpl_sys').value = j.sys || ''; e.textContent = j.prompt ? j.model + ' · ' + __('layer_info', [j.effort, j.tokens]) + '\n\n' + j.prompt : ((j.error && j.error.message) || __('no_answer')); } catch (x) { e.textContent = String(x.message || x); } }
+// a 401 drops the session only if it refused the token the session still holds: a poll sent with the old one that lands after setTok() is ignored
+async function api(p, m, b, k = TOK) { const r = await fetch('/admin/api' + p, { method: m || 'GET', headers: { 'x-admin-token': k, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }); if (r.status === 401) { if (k === TOK) drop(); throw new Error('401'); } return r.json(); }
+// TOK = accepted token only; any 401 drops it
+function login(k) {
+  api('/state', 0, 0, k).then(async s => { TOK = k; try { localStorage.setItem('ia_tok', k); } catch (_) {}
+    await loadUsage();   // before painting, or the key table shows zeros that nothing fixes
+    $('#gate').classList.add('hide'); $('#app').classList.remove('hide'); render(s); cloudRender(); vtabRestore(); monSeed(); monFoldRestore(); costRestore(); wake(1); },
+  e => { if (e.message === '401') drop(); else $('#gerr').textContent = __('no_server'); });   // at the gate TOK is '' so api() leaves the drop to us
+}
+function drop(m) { TOK = ''; try { localStorage.removeItem('ia_tok'); } catch (_) {} $('#app').classList.add('hide'); $('#gate').classList.remove('hide'); $('#gerr').textContent = m == null ? __('bad_token') : m; wake(); }
+// log out: this browser forgets the token; Security changes the token itself
+function logout() { $('#tok').value = ''; drop(''); }
+function enter() { login($('#tok').value.trim()); }
+let _rfT = 0;
+// a silent catch left the panel empty after a reload: retry, then say so
+// both lanes' current names, asked once by this browser (never by the server): stable vX.Y.Z and the newest nightly with the ubuntu-vulkan build
+async function relInfo(E) {
+  const g = 'https://api.github.com/repos/' + E.repo + '/releases';
+  try {
+    const [s, n] = await Promise.all([fetch(g + '/latest').then(r => r.json()), fetch(g + '?per_page=5').then(r => r.json())]);
+    REL.stable = s.tag_name; REL.latest = (n.find(r => r.assets.some(a => a.name.endsWith(E.asset))) || {}).tag_name;
+  } catch (_) { return; }
+  ['latest', 'stable'].forEach(k => { const o = document.querySelector(`#engtag option[value="${k}"]`); if (o && REL[k]) o.textContent += ' · ' + REL[k]; });
+}
+// download (if new), checks, smoke test and live swap run on the server; the running model restarts on the new build
+async function setEngine() {
+  const e = $('#engtag'), t = e.value;
+  if (!confirm(__('engine_ask', [e.selectedOptions[0].textContent]))) return;
+  const r = await api('/engine', 'POST', { tag: t });
+  toast(r.error ? r.error.message : __('engine_busy')); refresh();
+}
+async function refresh() {
+  // usage too: gateway memory, no engine call
+  try { await loadUsage(); render(await api('/state')); _rfT = 0; }
+  catch (e) { if (++_rfT <= 2) setTimeout(refresh, 1200); else { _rfT = 0; toast(__('no_data')); } }
+}
+function render(s) {
+  LS = s;
+  DL = s.downloaded || [];
+  const eng = s.engine_up ? '<span class="ok">🟢 ' + __('ready') + '</span>' : '<span style="color:var(--dz)">🔴 ' + __('not_found') + '</span>';
+  // the engine: installed builds or the newest release, prebuilt (never compiled); J is the update in progress or the last one
+  const J = s.engine_job, run = J && J.state === 'run', cur = String(s.engine || '').split(' ').pop();
+  // everything particular to the engine comes from config chat.engine (s.engine_src): name, repo, folder, build file, guide
+  const E = s.engine_src || {}, GH = 'https://github.com/' + E.repo + '/releases', gl = (u, t) => `<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>`;
+  if (!REL && E.repo) { REL = {}; relInfo(E); }
+  const lb = (k, t) => t + (REL && REL[k] ? ' · ' + esc(REL[k]) : '');
+  put('#engine',
+    `<div><b>${__('engine')}:</b> ${eng} <span class="mut">${esc(s.engine || '')}</span>`
+    + ` <select id="engtag" style="width:auto"${run ? ' disabled' : ''}>${(s.engines || []).map(t => `<option${t === cur ? ' selected' : ''}>${t}</option>`).join('')}`
+    + `<option value="latest">${lb('latest', __('opt_nightly'))}</option><option value="stable">${lb('stable', __('opt_stable'))}</option></select>`
+    + ` <button class="ghost" style="flex:0;padding:4px 10px" onclick="setEngine()"${run ? ' disabled' : ''}>${__('change')}</button></div>`
+    + (J ? `<div class="mut" style="font-size:12px">${run ? '⏳' : J.state === 'ok' ? '✅' : '⚠️'} ${esc(J.tag)} · ${esc(J.line)}</div>` : '')
+    + `<div class="mut" style="font-size:12px;margin-top:4px">${__('engine_note', [esc(E.name), esc(String(E.repo).split('/')[0])])}<br>`
+    + [gl(`${GH}/tag/${cur}`, __('notes_for', [esc(cur)])), gl(`${GH}/download/${cur}/${E.dir}${cur}${E.asset}`, __('download', [esc(cur)])),
+       gl(GH + '/latest', __('stable')), gl(GH, __('releases'))].concat(E.guide ? gl(E.guide, __('server_guide')) : []).join(' · ') + '</div>'
+    // by hand: the build's archive carries its own top folder, so unpacking it here is the whole install
+    + `<div class="mut" style="font-size:12px;margin-top:4px">${__('engine_hand', [esc(E.dir), esc(E.asset), `<code style="white-space:nowrap">${esc(s.engine_dir)}</code>`])}</div>`);
+  // per engine: running / permits (+ waiting); local permits = the model's slots, cloud and claude = max_concurrent
+  put('#state',
+    `<div class="sp"><b>${__('requests')}:</b> ${__('req_state', [s.inflight || 0, s.queued || 0, s.max_concurrent])}${Object.keys(s.permits || {}).map(e => ` · <span class="mut">${esc(e.indexOf('local:') ? e === 'cloud' ? __('permit_cloud') : e : e.slice(6))} ${s.permits[e][0]}/${s.permits[e][2]}${s.permits[e][1] ? ' +' + __('queued', [s.permits[e][1]]) : ''}</span>`).join('')}</div>`
+    + `<div class="sp mut">${__('keys')}: ${(s.keys || []).length} · ${__('installed')}: ${DL.length}</div>`
+    + `<div class="sp"><b>${__('served')}</b></div>`
+    + `<div class="mn-vit sp">${(() => { let i = 0, o = 0, r = 0, usd = 0; for (const k in USAGE) { const u = USAGE[k] || {}; i += u.in || 0; o += u.out || 0; r += u.req || 0; usd += u.usd || 0; } let c = 0; try { c = +localStorage.getItem('ia_cost_tok') || 0; } catch (_) {} return mtile(__('input'), fmtT(i)) + mtile(__('output'), fmtT(o)) + mtile(__('requests'), r.toLocaleString()) + (c > 0 ? mtile(__('est_cost'), '$' + ((i + o) / 1e6 * c).toFixed(2), __('per_1m', [c])) : '') + (usd > 0 ? mtile(__('real_cloud'), '$' + usd.toFixed(4)) : ''); })()}</div>`);
+  // About: the product from live data (version, engine, capabilities, links)
+  put('#about',
+    `<div style="display:flex;align-items:center;gap:12px"><img src="/admin/logo.png" alt="53ON" width="56" height="56"><div style="font-size:16px;font-weight:700">53ON AI Server <span class="mut" style="font-size:13px;font-weight:400">· ${__('about_tag')}</span></div></div>`
+    + `<div class="mut sp">${__('about_text')}</div>`
+    + `<div class="sp"><b>${__('engine')}:</b> ${esc(E.name || '—')} ${esc(cur || '')} · ${eng}</div>`
+    + `<div class="sp"><b>${__('caps')}:</b> ${__('caps_list', ['<code>generate_image</code>'])}</div>`
+    + `<div class="sp"><b>${__('compat')}:</b><div class="mut" style="font-size:12px;margin-top:4px"><code>/v1/chat/completions</code> · <code>/v1/completions</code> · <code>/v1/models</code> · <code>/v1/messages</code></div></div>`
+    + `<div class="sp mut">${__('about_counts', [DL.length, (s.keys || []).length])}</div>`
+    + (E.guide || E.repo ? `<div class="sp">${[E.guide && gl(E.guide, '📖 ' + __('guide')), E.repo && gl('https://github.com/' + E.repo, '💻 ' + __('engine') + ' (GitHub)')].filter(Boolean).join(' · ')}</div>` : '')
+    + `<div class="sp mut" style="font-size:11px">${__('about_foot')}</div><div class="mut" style="font-size:11px;margin-top:4px">${__('about_legal')}</div>`);
+  SEL = s.on || []; FREE = s.free; val('#ctxcap', s.ctx_cap || 8192); ctxTag();
+  TOOLS = s.tools || {};
+  // The drawer belongs to the main model: one model creates, one edits. Local image models always; cloud ones only while
+  // the cloud is on. Off is a state, not an absence: the Nube tab, its loader and its rows stay, marked off.
+  IMGS = s.images || [];
+  const D = DL.filter(m => m.draws && m.state !== 'off').map(m => m.name), t = TOOLS.image || {};
+  const IC = IMGS.filter(m => m.task !== 'edit').map(m => m.id).concat(D), IE = IMGS.filter(m => m.task !== 'create').map(m => m.id).concat(D);
+  // shown = what is stored while switched on; a stored model that no longer exists is named, not hidden
+  const dm = t.on !== false ? toolModel(t) : '', de = t.on !== false ? t.edit || '' : '';
+  const opts = (L, v) => `<option value="">${__('off')}</option>${L.map(n => `<option${n === v ? ' selected' : ''}>${esc(n)}</option>`).join('')}`
+    + (v && L.indexOf(v) < 0 ? `<option value="${esc(v)}" selected>⚠️ ${esc(v)} (${__('not_available')})</option>` : '');
+  const st = !dm && !de ? __('image_off') : __('any_model');
+  const dh = !IC.length && !IE.length ? '' : `<label>${__('draws')}</label><select id="dsel">${opts(IC, dm)}</select>`
+    + `<label>${__('edits')}</label><select id="esel">${opts(IE, de)}</select>`
+    + `<div class="dnote">${[st, 
+        dm || de ? __('draw_note', ['<code>generate_image</code>']) : ''].filter(Boolean).join('<br>')}</div>`;
+  put('#drawer', dh);
+
+  const inVram = {}; (s.loaded || []).forEach(m => { inVram[m.name] = m; });
+  VRAM = inVram;
+  // a row: name, a line of chips (as the loader card) and one button; only what is not obvious gets said
+  const chips = (...c) => c.filter(Boolean).map(t => t[0] === '<' ? t : `<span class="pill">${t}</span>`).join('');
+  const low = (gb, up) => !up && FREE != null && gb > FREE;
+  const bad = (t, h) => `<span class="pill bad"${h ? ` title="${esc(h)}"` : ''}>${t}</span>`;
+  const size = (gb, up) => gb ? chips(gb + ' GB') + (low(gb, up) ? bad(__('gb_short', [(gb - FREE).toFixed(1)])) : '') : '';
+  const lbtn = (n, up, busy, gb) => `<button type="button" class="lbtn ${up ? 'danger' : 'play'}" data-m="${esc(n)}" data-a="${up ? 'unload' : 'load'}"${BUSY[n] || busy || low(gb, up) ? ' disabled' : ''}`
+    + ` title="${up ? __('stop') : __('serve')}">${BUSY[n] ? '⏳' : up ? '⏹' : '▶︎'}</button>`;
+  const row = (n, tip, c, b) => `<div class="mdl"${tip ? ` title="${esc(tip)}"` : ''}><span><code>${n}</code><div>${c}</div></span>${b}</div>`;
+  const ebtn = (k, n) => `<button type="button" class="ebtn" data-k="${k}" data-e="${esc(n)}" title="${__('cat_edit')}">✏️</button>`;
+  const CAP = { vision: __('cap_vision'), video: __('cap_video'), audio: __('cap_audio'), tools: __('cap_tools'), thinking: __('cap_thinking') };
+  const card = (m) => {
+    const l = inVram[m.name], up = !!l || !!m.state || SEL.includes(m.name), cx = (l && l.ctx) || +m.ctxPlan || 0;
+    return row(m.name, [m.ttl, m.note, m.params, m.gguf, m.gb && __('gb_disk', [m.gb])].filter(Boolean).join(' · '), chips(
+      m.state === 'loading' && `⏳ ${PH[m.ph] || __('loading')} · ${Math.round((Date.now() - m.since) / 1000)} s`,
+      m.err && bad('⚠️ ' + __('engine_fail'), m.err), !l && !m.state && offTxt(m) && bad(offTxt(m)),
+      cx && __('n_ctx', [fmtK(cx)]), ...(m.caps || []).map(c => CAP[c]), m.quant, m.mtp && 'MTP ×' + m.mtp, m.uncensored && __('uncensored'),
+      `<span class="pill spd" data-m="${esc(m.name)}"></span>`) + size(l ? l.vram_gb : m.need, up), ebtn('text', m.name) + lbtn(m.name, up, false, m.need));
+  };
+  // While any picture is pending every image button waits: loading or unloading one would kill it.
+  const ib = IMGS.some(m => m.busy || m.jobs);
+  const imgRow = (m) => row(esc(m.id), '', chips(m.state === 'loading' && '⏳ ' + __('loading'), m.busy && '⏳ ' + __('generating'), m.err && bad('⚠️ ' + __('engine_fail'), m.err)) + size(m.mem_gb || m.gb, !!m.state), ebtn('image', m.id) + lbtn(m.id, !!m.state, ib, m.gb));
+  const cardSky = (m) => row('☁️ ' + esc(m.name), '', chips(/^(no_balance|bad_key)/.test(m.state) && bad(CST[m.state]), m.ctx && __('n_ctx', [fmtK(+m.ctx)]), esc(m.provLabel || m.prov),
+    `<span class="pill spd" data-m="${esc(m.name)}" data-c="1"></span>`), lbtn(m.name, SEL.includes(m.name), m.state === 'off', 0));
+  const LOC = DL.filter(m => !m.cloud), SKY = DL.filter(m => m.cloud);
+  const sec = (t, n, x) => `<div class="msec">${t} <span class="mut">· ${n}</span>${x || ''}</div>`;
+  const n = (a) => a.length === 1 ? __('n_model', [a.length]) : __('n_models', [a.length]);
+  const IMc = IMGS.filter(m => m.task === 'create'), IMe = IMGS.filter(m => m.task === 'edit'),
+    IMo = IMGS.filter(m => m.task === 'both'), VID = s.videos || [];
+  let html = sec('🧠 ' + __('local'), n(LOC) + (FREE != null ? ' · ' + __('gb_free', [FREE]) : ''),
+    `<button type="button" class="ebtn" data-k="text" data-e="" title="${__('cat_add')}">+</button>`);
+  html += LOC.length ? LOC.map(card).join('') : '<span class="mut">' + __('no_models') + '</span>';
+  if (IMc.length) html += sec('🎨 ' + __('sec_create'), n(IMc)) + IMc.map(imgRow).join('');
+  if (IMe.length) html += sec('✏️ ' + __('sec_edit'), n(IMe)) + IMe.map(imgRow).join('');
+  if (IMo.length) html += sec('🎨 ' + __('sec_both'), n(IMo)) + IMo.map(imgRow).join('');
+  if (VID.length) html += sec('🎬 ' + __('ty_video'), n(VID)) + VID.map(v => row(esc(v), '', bad(__('no_engine')), ebtn('video', v))).join('');
+  if (SKY.length) {
+    html += sec('☁️ API', n(SKY)) + SKY.map(cardSky).join('');
+  }
+  put('#models', html);
+  paintPerf(); paintUsage();
+  // an image model loading or drawing: state every 3 s until it settles
+  clearTimeout(IMGW); if (ib || IMGS.some(m => m.state === 'loading') || LOC.some(m => m.state === 'loading' || (m.off || {}).next > Date.now()) || (s.engine_job || {}).state === 'run') IMGW = setTimeout(refresh, 3000);
+  val('#maxc', s.max_concurrent);
+  if ($('#kimg').innerHTML === '') $('#kimg').innerHTML = imgOpts('');   // keep the owner's pick across repaints
+  const LPT = s.lan_port || s.port;   // at home always the plain door: a cert is issued for the name, never for the ip
+  const locals = (s.lan || []).map(h => `http://${h}:${LPT}/v1`);
+  LANU = (s.lan && s.lan[0]) ? `http://${s.lan[0]}:${LPT}` : '';
+  KEY0 = (s.keys && s.keys[0]) ? s.keys[0].key : '';
+  put('#lan', (locals.length ? locals : [__('no_net')]).map(u =>
+    `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><code>${u}</code>${u.startsWith('http') ? `<button class="ghost" style="flex:0;padding:4px 9px" onclick="copy('${u}')">${__('copy')}</button>` : ''}</div>`).join(''));
+  const pub = s.public_url ? s.public_url + '/v1' : '';
+  put('#pub', pub
+    ? `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><code>${pub}</code><button class="ghost" style="flex:0;padding:4px 9px" onclick="copy('${pub}')">${__('copy')}</button></div>`
+    : '<span class="mut">' + __('not_set') + '</span>');
+  val('#puburl', s.public_url || '');
+  // no repaint of the key table while a menu is open or one of its fields is focused
+  if (!_openMenu && !$('#keys').contains(document.activeElement)) put('#keys tbody', s.keys.map((k, i) => {
+    const u = USAGE[k.key] || { in: 0, out: 0, req: 0 };
+    const used = (u.in || 0) + (u.out || 0);
+    const q = +u.quota || 0;
+    const pct = q ? Math.min(100, Math.round(used * 100 / q)) : 0;
+    const col = pct >= 100 ? '#c0392b' : (pct >= 80 ? '#e67e22' : '#2ecc71');
+    const bar = q
+      ? `<div style="background:var(--in);border-radius:6px;height:6px;overflow:hidden;margin-top:3px"><div style="width:${pct}%;height:100%;background:${col}"></div></div>`
+      : '';
+    const txt = q ? `${fmtT(used)} / ${fmtT(q)}` : `${fmtT(used)} <span class="mut">· ${__('no_limit')}</span>`;
+    const qd = +u.quota_day || 0, dy = u.day || { in: 0, out: 0 }, dused = (dy.in || 0) + (dy.out || 0);
+    const dtxt = qd ? __('today_quota', [fmtT(dused), fmtT(qd)]) + (dused >= qd ? ' <span style="color:#c0392b">· ' + __('used_up') + '</span>' : '') : __('today_n', [fmtT(dused)]);
+    return `<tr><td><input class="kname-ed" value="${(k.name || '').replace(/"/g, '&quot;')}" onchange="renameKey('${k.key}', this.value)"
+        style="width:100%;border:1px solid transparent;background:transparent;padding:3px 5px;border-radius:6px;font:inherit"
+        onfocus="this.style.border='1px solid #cfd4e0';this.style.background='#fff'"
+        onblur="this.style.border='1px solid transparent';this.style.background='transparent'" title="${__('rename_tip')}"></td>
+      <td><code>${k.key.slice(0, 14)}…</code></td>
+      <td style="min-width:210px">${txt}${bar}
+        <div class="mut" style="font-size:11px;margin-top:2px">${__('key_usage', [u.req || 0, fmtT(u.in || 0), fmtT(u.out || 0)])} · ${dtxt}</div>
+        ${u.expires ? `<div style="font-size:11px;margin-top:1px;color:${u.expired ? '#c0392b' : '#888'}">${u.expired ? '⚠️ ' + __('expired_on') : __('expires_on')} ${u.expires.slice(0, 16).replace('T', ' ')}</div>` : ''}
+        </td>
+      <td style="text-align:right;white-space:nowrap;position:relative">
+        <button class="ghost" onclick="toggleMenu(this)" title="${__('more')}" style="padding:4px 11px">⋮</button>
+        <div class="kmenu plan-ed" data-k="${k.key}" hidden style="position:absolute;right:0;top:100%;z-index:20;background:#fff;border:1px solid #dfe3ec;border-radius:9px;box-shadow:0 6px 20px rgba(0,0,0,.12);padding:9px;min-width:186px;text-align:left">
+          <div class="mut" style="font-size:11px;margin-bottom:4px">${__('plan')}</div>
+          <div style="display:flex;gap:5px;align-items:center;margin-bottom:7px">
+            <input class="ed-num pe-tok" type="text" value="${fmtT(q)}" title="${__('quota_ph')}" style="width:70px">
+            <span class="mut" style="font-size:11px">${__('unit_tokens')}</span>
+            <input class="ed-num pe-mon" type="number" min="0" step="1" value="${Math.round((+u.quota_days || 0) / 30)}" title="${__('months_tip')}" style="width:42px">
+            <span class="mut" style="font-size:11px">${__('unit_months')}</span>
+          </div>
+          <div style="display:flex;gap:5px;align-items:center;margin-bottom:7px">
+            <input class="ed-num pe-day" type="text" value="${fmtT(qd)}" title="${__('day_cap_tip')}" style="width:70px">
+            <span class="mut" style="font-size:11px">${__('unit_day')}</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;margin:7px 0 3px">
+            <span class="mut" style="font-size:11px">${__('images')}</span>
+            <select class="pe-img" style="flex:1">${imgOpts(k.image)}</select>
+          </div>
+          <button class="ghost mi" onclick="savePlan(this)" style="background:var(--in);color:var(--ac);margin-top:6px">${__('save')}</button>
+          <div style="height:1px;background:var(--ln);margin:6px 0"></div>
+          <button class="ghost mi" onclick="resetUsage('${k.key}')">${__('usage_reset')}</button>
+          <button class="ghost mi" onclick="copy('${k.key}')">${__('key_copy')}</button>
+          <button class="ghost mi" onclick="rotKey('${k.key}')">${__('key_rotate')}</button>
+          <button class="dz mi" onclick="delKey('${k.key}')">${__('revoke')}</button>
+        </div></td></tr>`;
+  }).join('') || '<tr><td colspan=4 class="mut">' + __('no_keys') + '</td></tr>');
+  loadUsage();
+  drawPresets();
+}
+async function saveCfg() { await api('/config', 'POST', { max_concurrent: +$('#maxc').value, public_url: $('#puburl').value.trim(), ctx_cap: +$('#ctxcap').value }); toast(__('cfg_saved')); refresh(); }
+// context: 8192 is the server default (server.js ctxCap); equal or empty = system, any other = custom
+function ctxTag() { const t = $('#ctxtag'); if (!t) return; const v = +($('#ctxcap').value || 0), sys = !v || v === 8192; t.textContent = sys ? __('ctx_system') : __('ctx_custom'); t.style.color = sys ? 'var(--mut)' : 'var(--ac)'; }
+// Pulse. Escaped: fields come from API clients. A new row = a request ended: refresh /state now.
+async function loadPulse() {
+  const d = await api('/pulse'), o = $('#pulse tbody')._h, n = +d.errors || 0;
+  LP = d.list || [];
+  paintPerf();
+  put('#pulseTop', __('pulse_top', [`<b>${d.tps_avg != null ? +d.tps_avg : '—'}</b>`, `<b>${+d.queue_max || 0}</b>`])
+    + (n ? ` · <b class="bad">${n}</b> ${n === 1 ? __('error') : __('errors')}` : ' · ' + __('no_errors'))
+    + (+d.stranded ? ` · <b class="bad">${+d.stranded}</b> ${__('stranded')}` : ''));
+  // rows as Strata's Recent requests (strata_cli/overview.py:437-446), from the pulse's own fields: no new load on the server
+  const n0 = v => v == null ? '—' : (+v).toLocaleString();
+  if (put('#pulse tbody', (d.list || []).slice(0, 15).map(e => { const s = e.cut ? ['amb', __('st_stopped')] : e.ok ? ['ok', __('st_done')] : ['bad', __('st_error')];
+    return `<tr><td>${esc(e.t)}</td><td class="${s[0]}" title="${esc([e.err || e.model, e.key].filter(Boolean).join(' · '))}">${s[1]}</td>`
+      + `<td class="n">${n0(e.in)}</td><td class="n">${n0(e.cn)}</td><td class="n">${n0(e.out)}</td>`
+      + `<td class="n">${e.tps != null ? (+e.tps).toFixed(1) : '—'}</td><td class="n">${+e.ms ? (e.ms / 1000).toFixed(1) + ' s' : '—'}</td></tr>`; }).join('')
+    || '<tr><td colspan=7 class="mut">' + __('no_activity') + '</td></tr>') && o) DATA();
+}
+
+// quota presets, scaled to one GPU
+const PRESETS = [
+  [__('plan_trial'),     '100K',   __('plan_trial_d')],
+  [__('plan_basic'),     '1.00M',  __('plan_basic_d')],
+  [__('plan_pro'),       '10.00M', __('plan_pro_d')],
+  [__('plan_biz'),  '50.00M', __('plan_biz_d')],
+  [__('plan_unl'), '0',      __('no_limit')],
+];
+function drawPresets() {
+  const c = $('#chipsT');
+  if (!c || c.innerHTML) return;
+  c.innerHTML = PRESETS.map(p =>
+    `<button type="button" class="preI" onclick="usePreset('${p[1]}')">
+       <b>${p[0]}</b> <span class="mut" style="font-size:11px">${p[1]}</span>
+       <div class="mut" style="font-size:10px;line-height:1.25">${p[2]}</div>
+     </button>`).join('');
+}
+function togglePresets() { const c = $('#chipsT'); if (c) c.hidden = !c.hidden; }
+function usePreset(v) { $('#kquota').value = v; const c = $('#chipsT'); if (c) c.hidden = true; }
+document.addEventListener('click', (e) => {
+  const c = $('#chipsT');
+  if (c && !c.hidden && !e.target.closest('#chipsT') && e.target.textContent.trim() !== '▾') c.hidden = true;
+}, true);
+
+let USAGE = {};
+// amounts as sold: 1M, 500K, 2.5M; a raw number is accepted too
+function parseT(v) {
+  const t = String(v || '').trim().toUpperCase().replace(/\s|,/g, '');
+  if (!t) return 0;
+  const m = t.match(/^([0-9.]+)\s*([KMB])?$/);
+  if (!m) return 0;
+  const n = parseFloat(m[1]) || 0;
+  return Math.round(n * ({ K: 1e3, M: 1e6, B: 1e9 }[m[2]] || 1));
+}
+function fmtT(n) {
+  n = +n || 0;
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+  return String(n);
+}
+async function loadUsage() {
+  try {
+    const d = await api('/usage', 'GET');
+    USAGE = {}; (d.keys || []).forEach(k => { USAGE[k.key] = k; });
+    UD = d; paintUsage();
+  } catch (_) {}
+}
+// Only edited fields are sent: changing tokens is a new package and restarts the period.
+let _openMenu = null;
+function toggleMenu(btn) {
+  const m = btn.parentNode.querySelector('.kmenu');
+  if (!m) return;
+  if (_openMenu && _openMenu !== m) _openMenu.hidden = true;
+  m.hidden = !m.hidden;
+  _openMenu = m.hidden ? null : m;
+  // reopen shows saved values, not what was typed and abandoned
+  if (!m.hidden) { m.querySelectorAll('input').forEach(i => { i.value = i.defaultValue; i.checked = i.defaultChecked; }); m.querySelector('.pe-tok').focus(); }
+}
+document.addEventListener('click', (e) => {
+  if (_openMenu && !e.target.closest('.kmenu') && !(e.target.tagName === 'BUTTON' && e.target.textContent.trim() === '⋮')) {
+    _openMenu.hidden = true; _openMenu = null;
+  }
+}, true);
+function savePlan(btn) {
+  const box = btn.closest('.plan-ed');
+  // send only edited fields: tokens restart the month
+  const ed = s => { const i = box.querySelector(s); return i && i.value !== i.defaultValue ? i.value : null; }, k = box.dataset.k, tok = ed('.pe-tok'), mon = ed('.pe-mon'), day = ed('.pe-day');
+  const isel = box.querySelector('.pe-img');
+  box.hidden = true; _openMenu = null;
+  setPlan(k, tok, mon, day, isel ? isel.value : null);
+}
+
+async function setPlan(key, tokens, months, day, image) {
+  const b = { key: key };
+  if (image !== null) b.image = image;
+  if (tokens !== null) b.quota = parseT(tokens);
+  if (months !== null) b.quota_days = Math.max(0, parseInt(months, 10) || 0) * 30;
+  if (day != null) b.quota_day = parseT(day);
+  await api('/key/update', 'POST', b);
+  toast(__('plan_saved') + (tokens !== null ? '. ' + __('period_today') : ''));
+  await loadUsage(); refresh();
+}
+async function renameKey(key, name) {
+  const n = (name || '').trim();
+  if (!n) { toast(__('name_empty')); $('#keys tbody')._h = 0; refresh(); return; }
+  await api('/key/update', 'POST', { key: key, name: n });
+  toast(__('name_saved')); await loadUsage(); refresh();
+}
+// Drawn in the page, so no browser can suppress it: a question always gets a real answer.
+function ask(msg) {
+  return new Promise(function (done) {
+    const box = $('#ask'), y = $('#asky'), n = $('#askn');
+    $('#askm').textContent = msg; box.hidden = false; y.focus();
+    function end(v) { box.hidden = true; removeEventListener('keydown', key); done(v); }
+    function key(e) { if (e.key === 'Escape') end(false); else if (e.key === 'Enter') end(true); }
+    y.onclick = function () { end(true); }; n.onclick = function () { end(false); };
+    box.onclick = function (e) { if (e.target === box) end(false); };
+    addEventListener('keydown', key);
+  });
+}
+async function resetUsage(key) {
+  if (!await ask(__('usage_reset_ask'))) return;
+  const r = await api('/key/update', 'POST', { key: key, reset_usage: true });
+  toast(r && r.ok ? __('usage_reset_ok') : __('not_reset')); await loadUsage(); refresh();
+}
+async function addKey() {
+  await api('/key', 'POST', { name: $('#kname').value.trim(), image: $('#kimg').value,
+                              quota: parseT($('#kquota').value), quota_day: parseT($('#kday').value),
+                              quota_days: Math.max(0, parseInt($('#kmonths').value, 10) || 0) * 30 });
+  $('#kname').value = ''; $('#kquota').value = '1.00M'; $('#kmonths').value = 1; $('#kday').value = '0'; $('#kimg').value = '';
+  toast(__('key_created')); refresh();
+}
+async function delKey(key) { if (!await ask(__('revoke_ask'))) return;
+  const r = await api('/key/delete', 'POST', { key }); toast(r && r.ok ? __('key_revoked') : __('not_revoked')); refresh(); }
+// A secret the server answers only once: shown here with its copy button (the value is read from the DOM, never inlined)
+const once = (t, v) => `<div class="mut" style="font-size:11px">${t} · ${__('shown_once')}</div><div style="display:flex;align-items:center;gap:8px;margin:4px 0"><code>${esc(v)}</code><button class="ghost" style="flex:0;padding:4px 9px" onclick="copy(this.previousElementSibling.textContent)">${__('copy')}</button></div>`;
+async function rotKey(key) {
+  if (!await ask(__('rotate_ask'))) return;
+  const r = await api('/key/rotate', 'POST', { key }); if (!r || !r.ok) return toast(__('not_rotated'));
+  put('#krot', once(__('new_key_for', ['<b>' + esc(r.name) + '</b>']), r.key)); toast(__('key_rotated')); refresh();
+}
+// gen = the server picks it; the session goes on with the new token (no re-login) and remembers it like login() does
+async function setTok(gen) {
+  const n = gen ? '' : $('#ntok').value.trim();
+  if (!gen && !/^[!-~]{16,64}$/.test(n)) return toast(__('token_rule'));
+  if (!await ask(__('token_ask'))) return;
+  const r = await api('/admin/token', 'POST', gen ? {} : { next: n }); if (!r || !r.ok) return toast((r && r.error && r.error.message) || __('not_changed'));
+  TOK = r.token; try { localStorage.setItem('ia_tok', TOK); } catch (_) {} $('#ntok').value = '';
+  put('#ntokout', once(__('new_token'), r.token) + '<div class="mut" style="font-size:11px">' + __('token_note') + '</div>');
+}
+// Support report: engine, PC, model and the last requests, in English like a log, never a key (Maya index.html:232-241).
+function copyReport() {
+  const j = MJ || {}, g = j.gpu || {}, c = j.cpu || {}, h = j.host || {}, s = LS || {};
+  const pair = a => a ? (a[0] / 1024).toFixed(1) + '/' + (a[1] / 1024).toFixed(1) + ' GB' : '—';
+  const L = ['ia_server ' + (s.engine || '—'),
+    'Machine: ' + (h.cpu || '—') + ' · ' + (h.os || '—') + (g.name ? ' · GPU ' + g.name : ''),
+    'Models: ' + ((s.on || []).join(', ') || '—') + ' · VRAM ' + pair(g.vram) + ' · up ' + dur(j.up),
+    'Hardware: CPU ' + (c.c != null ? c.c + '°C ' : '') + (c.pct != null ? c.pct + '% ' : '') + '· GPU ' + (g.c != null ? g.c + '°C ' : '') + (g.busy != null ? g.busy + '% ' : '') + (g.w != null ? g.w.toFixed(0) + 'W ' : '') + '· RAM ' + pair(j.ram) + ' · Disk free ' + (j.disk ? ((j.disk[1] - j.disk[0]) / 1024).toFixed(0) + ' GB' : '—')];
+  if (j.queued || j.jobs) L.push('Queue: ' + [j.queued ? j.queued + ' queued' : '', j.jobs ? j.jobs + ' image(s)' : ''].filter(Boolean).join(' · '));
+  L.push('Latest requests (no key):');
+  (LP || []).slice(0, 10).forEach(e => L.push('  ' + e.t + ' · ' + (e.model || '?') + ' · ' + (+e.in || 0) + '/' + (+e.out || 0) + ' tok' + (e.tps != null ? ' · ' + e.tps + ' t/s' : '') + ' · ' + (e.ok ? e.code : (e.err || e.code))));
+  copy(L.join('\n'));
+}
+// navigator.clipboard needs a secure context; the LAN panel is plain HTTP, so execCommand is the fallback
+function copy(t) {
+  const ok = () => toast(__('copied'));
+  if (window.isSecureContext && navigator.clipboard) {
+    navigator.clipboard.writeText(t).then(ok).catch(() => copyFallback(t, ok));
+    return;
+  }
+  copyFallback(t, ok);
+}
+function copyFallback(t, ok) {
+  const ta = document.createElement('textarea');
+  ta.value = t;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';   // off screen but focusable
+  document.body.appendChild(ta);
+  ta.select(); ta.setSelectionRange(0, t.length);               // iOS ignores select() alone
+  let done = false;
+  try { done = document.execCommand('copy'); } catch (e) {}
+  ta.remove();
+  done ? ok() : toast(__('not_copied'));
+}
+async function testConn() {
+  const out = $('#testout');
+  if (!LANU) { out.innerHTML = '<span style="color:var(--dz)">' + __('no_net') + '</span>'; return; }
+  out.textContent = __('testing', [LANU]);
+  try {
+    const h = await fetch(LANU + '/health', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+    let models = null;
+    if (h && h.ok && KEY0) { const m = await fetch(LANU + '/v1/models', { headers: { authorization: 'Bearer ' + KEY0 } }).then(r => r.json()).catch(() => null); if (m && m.data) models = m.data.length; }
+    out.innerHTML = __('x_at', [h && h.ok ? `<span class="ok">${__('responds')}</span>` : `<span style="color:var(--dz)">${__('no_response')}</span>`, `<code>${LANU}</code>`])
+      + (h && h.ok && models != null ? ' · ' + __('n_models', [`<b>${models}</b>`]) : '');
+  } catch (e) { out.innerHTML = `<span style="color:var(--dz)">${esc(e.message)}</span>`; }
+}
+// theme: '' system · 'light' · 'dark' — lives in Settings; highlights the active choice and repaints the chart
+function setTheme(m) { if (m) document.documentElement.setAttribute('data-theme', m); else document.documentElement.removeAttribute('data-theme'); try { localStorage.setItem('ia_theme', m); } catch (_) {} document.querySelectorAll('#themeSeg button').forEach(b => b.classList.toggle('play', (b.dataset.th || '') === m)); try { mnDraw(); } catch (_) {} }
+// language: kept by the server (config.json lang); the reload brings the page its new bag
+async function setLang(l) { const r = await api('/config', 'POST', { lang: l }).catch(() => null); if (r && r.lang === l) return location.reload(); $('#lang').value = I18N.lang; toast(__('not_saved')); }
+(function () { let t = ''; try { t = localStorage.getItem('ia_theme') || ''; } catch (_) {} setTheme(t); put('#lang', (I18N.langs || []).map(l => `<option value="${l.code}"${l.code === I18N.lang ? ' selected' : ''}>${esc(l.name)}</option>`).join('')); const k = localStorage.getItem('ia_tok'); if (k) login(k); })();
+</script>
+</body>
+</html>

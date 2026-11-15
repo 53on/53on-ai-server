@@ -1,0 +1,12 @@
+config.json
+config.json.*
+usage.json
+prices.json
+metrics_history.json
+audit.log*
+*.log
+*.log.1
+img/
+certs/
+slots/
+node_modules/

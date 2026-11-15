@@ -1,0 +1,19 @@
+[Unit]
+Description=53ON AI Server (OpenAI-compatible API over llama.cpp)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# the user that owns ~/models and ~/engines, and the folder of this repository
+User=ai
+WorkingDirectory=/home/ai/53on-ai-server
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+# a model that runs out of memory does not take the server down; stopping the server stops its engines
+OOMPolicy=continue
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
