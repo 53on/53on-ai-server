@@ -52,7 +52,16 @@ sudo systemctl enable --now ia-server
 
 What we run on a Ryzen AI Max+ 395 mini PC with 128 GB of unified memory:
 
-- **Ubuntu 24.04 LTS, headless.** No desktop, so the memory goes to the models: `sudo systemctl set-default multi-user.target`.
+- **Ubuntu 24.04 LTS, headless, with the RAM freed for the models.** No desktop, and the services an AI box does not use are switched off:
+
+  ```
+  sudo systemctl set-default multi-user.target
+  sudo systemctl disable --now snapd snapd.socket snapd.seeded upower unattended-upgrades ModemManager avahi-daemon cups bluetooth
+  sudo systemctl mask --now fwupd
+  sudo touch /etc/cloud/cloud-init.disabled
+  ```
+
+  With unattended upgrades off, security updates are applied by hand (`sudo apt update && sudo apt upgrade`), and any snap you still use stops with `snapd`.
 - **96 GB for the GPU.** In the BIOS, set the UMA frame buffer to 96 GB, which leaves 32 GB to the system.
 - **Kernel parameters.** Add them to `GRUB_CMDLINE_LINUX_DEFAULT` in `/etc/default/grub`, then `sudo update-grub` and reboot:
 
