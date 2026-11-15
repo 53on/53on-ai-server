@@ -1,0 +1,302 @@
+{
+  "Huihui-Qwen3.8-27B-abliterated-UD-Q5_K_XL.gguf": {
+    "id": "qwen38-27b-huihui-q5",
+    "args": [
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-b",
+      "1024",
+      "-ub",
+      "128",
+      "--spec-type",
+      "draft-dflash",
+      "-md",
+      "Qwen3.8-27B-DFlash2-Q4_K_M.gguf",
+      "--spec-draft-n-max",
+      "4",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0"
+    ],
+    "mmproj": "mmproj-F16.gguf",
+    "think_sampling": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0
+    },
+    "think_budget": {
+      "low": 512,
+      "medium": 1024,
+      "high": 2048,
+      "xhigh": 4096,
+      "max": 8192
+    },
+    "out_max": 16384
+  },
+  "Qwen3.8-Flash-Next-Uncensored-IQ3_XXS-00001-of-00002.gguf": {
+    "id": "qwen38-flash-next-iq3xxs",
+    "args": [
+      "--spec-type",
+      "draft-mtp",
+      "-md",
+      "Qwen3.8-Flash-Next-Uncensored-MTP-draft.gguf",
+      "--spec-draft-n-max",
+      "4",
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-b",
+      "1024",
+      "-ub",
+      "1024",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0",
+      "--reasoning-budget",
+      "4096",
+      "--lazy-mode",
+      "on",
+      "--ctx-checkpoints",
+      "12"
+    ],
+    "mmproj": "mmproj-F16.gguf",
+    "think_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0
+    },
+    "instruct_sampling": {
+      "temperature": 0.7,
+      "top_p": 0.8,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 1.5
+    },
+    "think_budget": {
+      "low": 512,
+      "medium": 1024,
+      "high": 2048,
+      "xhigh": 4096,
+      "max": 8192
+    },
+    "out_max": 16384
+  },
+  "Qwen3.8-Flash-Next-GSQ-RCO-abliterated-IQ3_S-00001-of-00002.gguf": {
+    "id": "qwen38-flash-next-gsq-ablit-iq3s",
+    "args": [
+      "--spec-type",
+      "draft-mtp",
+      "-md",
+      "Qwen3.8-Flash-Next-Uncensored-MTP-draft.gguf",
+      "--spec-draft-n-max",
+      "4",
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-b",
+      "1024",
+      "-ub",
+      "1024",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0",
+      "--reasoning-budget",
+      "4096",
+      "--lazy-mode",
+      "on",
+      "--ctx-checkpoints",
+      "12",
+      "--override-kv",
+      "qwen4exp.context_length=int:1048576"
+    ],
+    "mmproj": "mmproj-F16.gguf",
+    "think_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0
+    },
+    "instruct_sampling": {
+      "temperature": 0.7,
+      "top_p": 0.8,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 1.5
+    },
+    "think_budget": {
+      "low": 512,
+      "medium": 1024,
+      "high": 2048,
+      "xhigh": 4096,
+      "max": 8192
+    },
+    "out_max": 16384
+  },
+  "Qwen3.5-4B-Q8_0.gguf": {
+    "id": "qwen3.5-4b",
+    "args": [
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "--jinja",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0",
+      "--reasoning-budget",
+      "-1"
+    ],
+    "think_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 0
+    },
+    "instruct_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 0
+    },
+    "think_budget": {
+      "minimal": 8192,
+      "low": 8192,
+      "medium": 8192,
+      "high": 8192,
+      "xhigh": 8192,
+      "max": 8192
+    },
+    "out_max": 16384
+  },
+  "Huihui-Qwen3.5-4B-abliterated.Q8_0.gguf": {
+    "id": "qwen35-4b-huihui-uncnr",
+    "args": [
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "--jinja",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0",
+      "--reasoning-budget",
+      "-1"
+    ],
+    "mmproj": "Huihui-Qwen3.5-4B-abliterated.mmproj-f16.gguf",
+    "think_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 0
+    },
+    "instruct_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 0
+    },
+    "think_budget": {
+      "minimal": 8192,
+      "low": 8192,
+      "medium": 8192,
+      "high": 8192,
+      "xhigh": 8192,
+      "max": 8192
+    },
+    "out_max": 16384
+  },
+  "Qwen3.5-9B-The-Defiant-Fable-Uncnr-Heretic-NEO-MAX-Q4_K_M.gguf": {
+    "id": "qwen35-9b-defiant-uncnr",
+    "args": [
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "--jinja",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0",
+      "--reasoning-budget",
+      "-1"
+    ],
+    "mmproj": "mmproj-F16.gguf",
+    "think_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 0
+    },
+    "instruct_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 0
+    },
+    "think_budget": {
+      "minimal": 8192,
+      "low": 8192,
+      "medium": 8192,
+      "high": 8192,
+      "xhigh": 8192,
+      "max": 8192
+    },
+    "out_max": 16384
+  },
+  "Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf": {
+    "id": "qwen35-4b-hauhau-uncnr",
+    "args": [
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "--jinja",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0",
+      "--reasoning-budget",
+      "-1"
+    ],
+    "think_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 0
+    },
+    "instruct_sampling": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 0
+    },
+    "think_budget": {
+      "minimal": 8192,
+      "low": 8192,
+      "medium": 8192,
+      "high": 8192,
+      "xhigh": 8192,
+      "max": 8192
+    },
+    "out_max": 16384
+  }
+}

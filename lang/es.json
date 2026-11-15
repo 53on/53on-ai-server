@@ -373,5 +373,6 @@
 "ui.panel": "Panel de control",
 "ui.version": "Versión",
 "ui.up_to_date": "al día",
-"ui.new_version": "{0} disponible"
+"ui.new_version": "{0} disponible",
+"ui.cat_preset": "calibración de 53ON aplicada"
 }

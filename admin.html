@@ -714,6 +714,14 @@ function medFile() {
   const ey = CAT.files.filter(x => x.kind === 'eyes' && x.dir === f.dir);
   if (!$('#me_mm').value && ey.length === 1) $('#me_mm').value = ey[0].path;
   if (!$('#me_id').value.trim()) $('#me_id').value = f.dir;
+  // a new entry for a file 53ON has calibrated takes its preset: arguments (drafts beside it), sampling, budget, length
+  const pr = !ED.id && (CAT.presets || {})[f.file], near = (n) => (CAT.files.find(x => x.dir === f.dir && x.file === n) || {}).path || n;
+  if (!pr) return;
+  $('#me_id').value = pr.id; $('#me_args').value = pr.args.map(x => /\.gguf$/i.test(x) ? near(x) : x).join(' ');
+  if (pr.mmproj) $('#me_mm').value = near(pr.mmproj);
+  ['think_sampling', 'instruct_sampling'].forEach((s, j) => SAMP.forEach(p => { const v = (pr[s] || {})[p]; $(`#me_s${j}_${p}`).value = v == null ? '' : v; }));
+  $('#me_out').value = pr.out_max || ''; if (pr.think_budget) $('#me_adv').value = JSON.stringify({ think_budget: pr.think_budget }, null, 2);
+  $('#me_tr').textContent += ' · ' + __('cat_preset');
 }
 function medClose() { $('#med').hidden = true; ED = null; }
 const medDone = (r, m) => { if (!r || !r.ok) return toast(__('failed', [((r || {}).error || {}).message || __('server_error')])); toast(m); medClose(); $('#models')._h = 0; refresh(); };

@@ -18,6 +18,7 @@ A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](
 - **OpenAI and Anthropic compatible.** `/v1/chat/completions`, `/v1/completions`, `/v1/models` and `/v1/messages`, with streaming, tools and vision. `/v1/models` reports each model's `context_length` (what it serves) and `max_context_length` (its trained maximum).
 - **Local models with llama.cpp.** Load and stop each model from the panel. A model is never stopped while it answers, and its conversations are kept between loads.
 - **Model catalog.** Copy a `.gguf` into its own folder and add it with **+**. The server reads the GGUF header (architecture and trained context) and the editor sets its type, vision projector, engine arguments, capabilities (vision, video, audio, tools, reasoning) and sampling.
+- **53ON's calibration.** For the models we run and tune (Qwen3.8 27B and Flash-Next, Qwen3.5 4B and 9B), add the `.gguf` and the editor fills its engine arguments, drafts, sampling, reasoning budget and answer length from [catalog.json](catalog.json).
 - **Images.** Create and edit pictures with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp); a text model draws by calling the `generate_image` tool.
 - **Cloud providers.** Relay Anthropic, OpenAI, Google, DeepSeek, Groq, Alibaba, OpenRouter and more through the same API. Provider keys stay on the server, and the server's own cloud catalog says the context of each cloud model.
 - **API keys with plans.** Token quotas, monthly plans, daily caps, image permission, usage per key, export and import.

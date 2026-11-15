@@ -545,7 +545,9 @@ function catalogScan() {
     files.push({ dir: d, file: f, path: p, gb: +(gb / 1e9).toFixed(1), train: m.train || 0, used: use[real(p)] || [],
       kind: m.arch === 'clip' || /mmproj/i.test(f) ? 'eyes' : /(^|[-_.])(mtp|draft|dflash)/i.test(f) ? 'draft' : 'model' });
   }); });
-  return { dir: dir, real: real(dir), files: files, text: ms, image: (cfg.images || {}).models || {}, video: (cfg.videos || {}).models || {}, cloud: (cfg.cloud || {}).catalog || {} };
+  // presets: 53ON's own calibration per model file (catalog.json), filled in when a matching .gguf is added
+  let presets = {}; try { presets = JSON.parse(fs.readFileSync(path.join(__dirname, 'catalog.json'), 'utf8')); } catch (_) {}
+  return { dir: dir, real: real(dir), files: files, presets: presets, text: ms, image: (cfg.images || {}).models || {}, video: (cfg.videos || {}).models || {}, cloud: (cfg.cloud || {}).catalog || {} };
 }
 // a kind is what a model makes (OpenRouter's output modality) and the config section that holds it; video has no engine yet
 const KIND = { text: 'chat', image: 'images', video: 'videos' };
