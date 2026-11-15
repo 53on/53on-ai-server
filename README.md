@@ -74,6 +74,18 @@ What we run on a Ryzen AI Max+ 395 mini PC with 128 GB of unified memory:
 - **The llama.cpp Vulkan build** (`ubuntu-vulkan-x64`), which the panel installs from **Settings › Engine**.
 - **The service file in `deploy/`** keeps the server up if a model runs out of memory (`OOMPolicy=continue`) and stops the engines with it (`KillMode=mixed`).
 
+## Our llama.cpp
+
+The server runs any recent official llama.cpp build. We also keep our own build, which adds:
+
+- **Dynamic VRAM.** The context memory grows with use, like a dynamic virtual disk, instead of being reserved whole at load: on Vulkan the KV cache and the compute buffers take memory in blocks as tokens arrive (sparse buffers, mapped directly on APUs), and on Linux the CPU path does the same. Measured on a Ryzen AI Max+ 395: a 1B model with a 1M-token window starts with 0.86 GiB instead of 8.24 GiB, and a 4B model at 262K with 4.41 GiB instead of 8.94 GiB.
+- **Fair scheduling.** `--prefill-budget-busy` and `--spec-max-busy-slots`: a long prompt no longer starves the users who are already getting an answer.
+- **Faster MoE on Vulkan without coopmat2** ([#27332](https://github.com/ggml-org/llama.cpp/pull/27332)): reads of 32-64 tokens 9-15 % faster on the Ryzen AI Max.
+- **Slot save and restore with KV tensors over 1 GiB on Vulkan** ([#25584](https://github.com/ggml-org/llama.cpp/pull/25584)), needed for million-token windows.
+- **Multimodal MTP for qwen4exp models** ([#30316](https://github.com/ggml-org/llama.cpp/pull/30316)): the draft model accepts image embeddings.
+
+Each change is dropped as soon as upstream llama.cpp includes it.
+
 ## Configuration
 
 Everything is set from the panel and saved to `config.json`; while the server runs, change it from the panel, not by hand. The panel and its API answer only on the local network: a request that comes from the internet through the router gets `404`. For HTTPS, put `fullchain.pem` and `privkey.pem` in `certs/`: the server then serves HTTPS on port 11500 and plain HTTP on 11501.
