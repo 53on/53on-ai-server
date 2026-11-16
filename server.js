@@ -532,19 +532,20 @@ function ggufMeta(f) {
   const a = kv['general.architecture'] || '';
   return (GG[f] = { t: st.mtimeMs, m: { arch: a, train: +kv[a + '.context_length'] || 0 } }).m;
 }
-// every GGUF one folder down (a split model = its first shard, sized with all); used = the entries naming it
+// every weight file one folder down: GGUF (a split one = its first shard) and safetensors (a split one = its index),
+// sized with all their shards; used = the entries naming it, text, image or video
 function catalogScan() {
   const dir = MDIR(), ms = (cfg.chat || {}).models || {}, use = {}, files = [];
   const real = (f) => { try { return fs.realpathSync(f); } catch (_) { return path.resolve(f); } }, mark = (f, who) => (use[real(f)] = use[real(f)] || []).push(who);
-  const ls = (p) => { try { return fs.readdirSync(p).sort(); } catch (_) { return []; } }, base = (x) => x.replace(/-\d+-of-\d+\.gguf$/i, '');
-  Object.keys(ms).forEach((id) => (ms[id].args || []).forEach((x, i, a) => /^(-m|--model|-mm|--mmproj)$/.test(x) && a[i + 1] && mark(a[i + 1], id)));
-  (JSON.stringify(cfg.images || {}).match(/[^"]+\.gguf(?=")/g) || []).forEach((f) => mark(f, '🎨'));
-  // a folder is a model; a variant may sit one level down (IQ3_XXS/…), still its folder's
+  const ls = (p) => { try { return fs.readdirSync(p).sort(); } catch (_) { return []; } }, base = (x) => x.replace(/-\d+-of-\d+\.(gguf|safetensors)$/i, '');
+  ['chat', 'images', 'videos'].forEach((s) => { const m = (cfg[s] || {}).models || {}; Object.keys(m).forEach((id) => (m[id].args || []).forEach((x) => path.isAbsolute(x) && mark(x, id))); });
+  // a folder is a model; a variant or a part (IQ3_XXS/, vae/…) may sit one level down, still its folder's
   const scan = (d, sub) => { const at = path.join(dir, d, sub), fl = ls(at); fl.forEach((f) => {
-    const sh = /-(\d+)-of-\d+\.gguf$/i.exec(f), p = path.join(at, f);
-    if (!/\.gguf$/i.test(f)) { if (!sub) { try { if (fs.statSync(p).isDirectory()) scan(d, f); } catch (_) {} } return; }
-    if (sh && +sh[1] !== 1) return;
-    const m = ggufMeta(p), gb = (sh ? fl.filter((x) => base(x) === base(f)) : [f]).reduce((s, x) => { try { return s + fs.statSync(path.join(at, x)).size; } catch (_) { return s; } }, 0);
+    const sh = /-(\d+)-of-\d+\.(gguf|safetensors)$/i.exec(f), ix = /\.safetensors\.index\.json$/i.test(f), p = path.join(at, f);
+    if (!ix && !/\.(gguf|safetensors)$/i.test(f)) { if (!sub) { try { if (fs.statSync(p).isDirectory()) scan(d, f); } catch (_) {} } return; }
+    if (sh && (+sh[1] !== 1 || /safetensors$/i.test(f))) return;
+    const g = sh ? base(f) : ix && f.replace(/\.safetensors\.index\.json$/i, ''), m = /\.gguf$/i.test(f) ? ggufMeta(p) : {};
+    const gb = (g ? fl.filter((x) => /\.(gguf|safetensors)$/i.test(x) && base(x) === g) : [f]).reduce((s, x) => { try { return s + fs.statSync(path.join(at, x)).size; } catch (_) { return s; } }, 0);
     files.push({ dir: d, file: sub ? sub + '/' + f : f, path: p, gb: +(gb / 1e9).toFixed(1), train: m.train || 0, used: use[real(p)] || [],
       kind: m.arch === 'clip' || /mmproj/i.test(f) ? 'eyes' : /(^|[-_.])(mtp|draft|dflash)/i.test(f) ? 'draft' : 'model' });
   }); };

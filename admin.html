@@ -662,16 +662,23 @@ $('#models').addEventListener('click', async e => {
 });
 // Catalog editor: ✏️ edits an entry, + adds one; files are put by hand in the models folder.
 let CAT = null, ED = null;
-const SAMP = ['temperature', 'top_p', 'top_k', 'min_p', 'presence_penalty'], RM = /^(-m|--model)$/, RMM = /^(-mm|--mmproj)$/, RMD = /^(-md|--model-draft)$/, RF = /^(-m|--model|-mm|--mmproj|-md|--model-draft)$/;
+const SAMP = ['temperature', 'top_p', 'top_k', 'min_p', 'presence_penalty'];
+// a kind's file slots: [flag|alias, file kind, label]; the engine's other args stay as typed (llama-server; sd-server, Wan's for video)
+const ROLES = { text: [['-m|--model', 'model', 'cat_file'], ['--mmproj|-mm', 'eyes', 'cat_eyes'], ['-md|--model-draft', 'draft', 'cat_draft']],
+  image: [['--diffusion-model', 'model', 'cat_dit'], ['--llm', 'model', 'cat_llm'], ['--llm_vision', 'eyes', 'cat_llmv'], ['--vae', 'model', 'cat_vae']],
+  video: [['--diffusion-model', 'model', 'cat_dit'], ['--high-noise-diffusion-model', 'model', 'cat_dit2'], ['--t5xxl', 'model', 'cat_t5'], ['--clip_vision', 'model', 'cat_clipv'], ['--vae', 'model', 'cat_vae']] };
+const rx = (r) => new RegExp('^(' + r[0] + ')$'), isR = (k, x) => ROLES[k].some(r => rx(r).test(x));
 const opt = (v, t, s) => `<option value="${esc(v)}"${s ? ' selected' : ''}>${esc(t)}</option>`;
+// llama-server reads only GGUF; sd-server reads safetensors too
+const fit = (k, f) => k !== 'text' || /\.gguf$/i.test(f.file);
 // a folder is a model: its selects see only its own files (one named elsewhere still shows, as it is)
-const fopts = (kind, d, cur, none) => { const L = (CAT.files || []).filter(f => f.kind === kind && f.dir === d);
+const fopts = (kind, d, cur, none) => { const L = (CAT.files || []).filter(f => f.kind === kind && f.dir === d && fit(ED.k, f));
   return (none ? opt('', __('cat_none'), !cur) : '') + L.map(f => opt(f.path, f.file + ' · ' + f.gb + ' GB' + (f.train ? ' · ' + fmtK(f.train) : '')
     + (f.used.length ? ' · ' + f.used.join(', ') : ''), f.path === cur)).join('') + (cur && !L.some(f => f.path === cur) ? opt(cur, cur, true) : ''); };
 const CAPS = { text: ['vision', 'video', 'audio', 'tools', 'thinking'], image: ['create', 'edit'], video: ['create', 'edit'] };
 const capTx = (k, c) => __(k === 'text' ? 'cap_' + c : (k === 'image' ? 'img_' : 'vid_') + c);
 const argAt = (a, re) => { const i = a.findIndex(x => re.test(x)); return i > -1 ? a[i + 1] || '' : ''; };
-const argRest = (a) => a.filter((x, i) => !RF.test(x) && !RF.test(a[i - 1] || '')).join(' ');
+const argRest = (k, a) => a.filter((x, i) => !isR(k, x) && !isR(k, a[i - 1] || '')).join(' ');
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ebtn'); if (b) { e.preventDefault(); catEdit(b.dataset.k, b.dataset.e); } });
 async function catEdit(k, id) {
   try { CAT = await api('/catalog'); } catch (_) { return toast(__('no_data')); }
@@ -685,21 +692,19 @@ function medPaint() {
   // ticked = allowed if the model has it; never set = all (text) or its task (pictures)
   const on = Array.isArray(e.caps) ? e.caps : k === 'text' ? CAPS.text : e.task === 'both' ? ['create', 'edit'] : [e.task || 'create'];
   const adv = Object.assign({}, e); ['args', 'caps', 'task', 'ttl', 'note', 'out_max', 'think_sampling', 'instruct_sampling', 'uncensored'].forEach(x => delete adv[x]);
-  // its files = the ones the server found it naming (realpath)
-  const mine = (kind, raw) => (ED.id && F.find(x => x.kind === kind && x.used.includes(ED.id)) || {}).path || raw;
-  const f = mine('model', argAt(a, RM)), mm = mine('eyes', argAt(a, RMM)), dr = argAt(a, RMD), cur = F.find(x => x.path === f);
-  const D = ED.d != null ? ED.d : (cur || {}).dir || '', dirs = [...new Set(F.filter(x => x.kind === 'model').map(x => x.dir))];
+  // a slot's file = the scanned one its arg names (a symlinked models root still matches)
+  const R = ROLES[k], mine = (raw) => (raw && F.find(x => x.path === raw || raw.endsWith('/' + x.dir + '/' + x.file)) || {}).path || raw;
+  const v = R.map(r => mine(argAt(a, rx(r)))), cur = F.find(x => x.path === v[0]);
+  const D = ED.d != null ? ED.d : (cur || {}).dir || '', dirs = [...new Set(F.filter(x => x.kind === 'model' && fit(k, x)).map(x => x.dir))];
   let h = `<div class="msec">${ED.id ? '✏️ ' + esc(ED.id) : '➕ ' + __('cat_add')}</div>`
     + `<div class="mut" style="font-size:12px">${__('cat_where', ['<code>' + esc(CAT.real || CAT.dir) + '/&lt;' + __('cat_folder') + '&gt;/</code>'])}</div>`
     + `<div class="row"><div style="max-width:150px"><label>${__('cat_type')}</label><select id="me_k" onchange="ED.k=this.value;medPaint()">${['text', 'image', 'video'].map(t => opt(t, __('ty_' + t), t === k)).join('')}</select></div>`
-    + `<div><label>${__('name')}</label><input id="me_id" value="${esc(ED.id || (k === 'image' ? 'local/' : ''))}"></div></div>`;
-  if (k === 'text') h += `<label>${__('cat_dir')}</label><select id="me_d" onchange="medDir()">${D ? '' : opt('', '—', 1)}${dirs.map(d => opt(d, d, d === D)).join('')}</select>`
-    + `<label>${__('cat_file')}</label><select id="me_f" onchange="medFile()">${f ? '' : opt('', '—', 1)}${fopts('model', D, f)}</select>`
-    + `<div id="me_tr" class="mut" style="font-size:12px;margin-top:4px">${cur && cur.train ? __('cat_train', [fmtK(cur.train)]) : ''}</div>`
-    + `<label>${__('cat_eyes')}</label><select id="me_mm">${fopts('eyes', D, mm, 1)}</select>`
-    + `<label>${__('cat_draft')}</label><select id="me_dr">${fopts('draft', D, dr, 1)}</select>`
-    + `<label>${__('cat_args')}</label><input id="me_args" value="${esc(ED.id ? argRest(a) : '-ngl 99 -fa on --jinja')}">`;
-  else h += `<label>${__('cat_args')}</label><textarea id="me_args" rows="3">${esc(a.join(' '))}</textarea>`
+    + `<div><label>${__('name')}</label><input id="me_id" value="${esc(ED.id || (k === 'image' ? 'local/' : ''))}"></div></div>`
+    + `<label>${__('cat_dir')}</label><select id="me_d" onchange="medDir()">${D ? '' : opt('', '—', 1)}${dirs.map(d => opt(d, d, d === D)).join('')}</select>`
+    // the first slot leads (its window, its preset); the others may stay empty
+    + R.map((r, i) => `<label>${__(r[2])}</label><select id="me_r${i}"${i ? '' : ' onchange="medFile()"'}>${i || v[0] ? '' : opt('', '—', 1)}${fopts(r[1], D, v[i], i)}</select>`
+      + (i ? '' : `<div id="me_tr" class="mut" style="font-size:12px;margin-top:4px">${cur && cur.train ? __('cat_train', [fmtK(cur.train)]) : ''}</div>`)).join('')
+    + `<label>${__('cat_args')}</label><input id="me_args" value="${esc(ED.id ? argRest(k, a) : k === 'text' ? '-ngl 99 -fa on --jinja' : '')}">`
     + (k === 'video' ? `<div class="mut" style="font-size:12px;margin-top:4px">${__('cat_no_engine')}</div>` : '');
   h += `<label>${__('cat_caps')}</label><div class="caps">${CAPS[k].map(c => `<label><input type="checkbox" class="cap" value="${c}"${on.includes(c) ? ' checked' : ''} onchange="ED.dirty=1"> ${capTx(k, c)}</label>`).join('')}</div>`;
   // the label shown is the server's (the owner's word or the file's name): ticked or not, saving makes it the owner's
@@ -715,24 +720,23 @@ function medPaint() {
     + (ED.id ? `<div style="text-align:right"><button class="dz" onclick="medDel()">🗑️ ${__('cat_delete')}</button></div>` : '') + '</div>';
   $('#med').innerHTML = h;
 }
-// a picked file names a new entry after its folder, with the only mmproj beside it
-// the folder leads: its model, eyes and draft are the only choices, and a lone one is taken
+// the folder leads: its files are the only choices, a lone one of a kind goes to that kind's first slot,
+// and a new entry is named after the folder
 function medDir() {
-  const d = ED.d = $('#me_d').value, one = (k) => { const L = CAT.files.filter(f => f.kind === k && f.dir === d); return L.length === 1 ? L[0].path : ''; }, m = one('model');
-  $('#me_f').innerHTML = (m ? '' : opt('', '—', 1)) + fopts('model', d, m);
-  $('#me_mm').innerHTML = fopts('eyes', d, one('eyes'), 1); $('#me_dr').innerHTML = fopts('draft', d, one('draft'), 1);
-  if (!ED.id) $('#me_id').value = d;
+  const d = ED.d = $('#me_d').value, k = ED.k, took = {}, one = (n) => { const L = CAT.files.filter(f => f.kind === n && f.dir === d && fit(k, f)); return L.length === 1 ? L[0].path : ''; };
+  ROLES[k].forEach((r, i) => { const m = r[1] in took ? '' : (took[r[1]] = one(r[1])); $('#me_r' + i).innerHTML = (i || m ? '' : opt('', '—', 1)) + fopts(r[1], d, m, i); });
+  if (!ED.id) $('#me_id').value = (k === 'image' ? 'local/' : '') + d;
   medFile();
 }
 function medFile() {
-  const f = (CAT.files || []).find(x => x.path === $('#me_f').value); if (!f) return;
+  const f = (CAT.files || []).find(x => x.path === $('#me_r0').value); if (!f) return;
   $('#me_tr').textContent = f.train ? __('cat_train', [fmtK(f.train)]) : '';
   // a new entry for a file 53ON has calibrated takes its preset: arguments (drafts beside it), sampling, budget, length
-  const bn = (x) => x.split('/').pop(), pr = !ED.id && (CAT.presets || {})[bn(f.file)], near = (n) => (CAT.files.find(x => x.dir === f.dir && bn(x.file) === n) || {}).path || n;
+  const bn = (x) => x.split('/').pop(), pr = !ED.id && ED.k === 'text' && (CAT.presets || {})[bn(f.file)], near = (n) => (CAT.files.find(x => x.dir === f.dir && bn(x.file) === n) || {}).path || n;
   if (!pr) return;
-  const pa = pr.args.map(x => /\.gguf$/i.test(x) ? near(x) : x);
-  $('#me_id').value = pr.id; $('#me_args').value = argRest(pa); if (argAt(pa, RMD)) $('#me_dr').value = argAt(pa, RMD);
-  if (pr.mmproj) $('#me_mm').value = near(pr.mmproj);
+  const pa = pr.args.map(x => /\.gguf$/i.test(x) ? near(x) : x), dr = argAt(pa, rx(ROLES.text[2]));
+  $('#me_id').value = pr.id; $('#me_args').value = argRest('text', pa); if (dr) $('#me_r2').value = dr;
+  if (pr.mmproj) $('#me_r1').value = near(pr.mmproj);
   ['think_sampling', 'instruct_sampling'].forEach((s, j) => SAMP.forEach(p => { const v = (pr[s] || {})[p]; $(`#me_s${j}_${p}`).value = v == null ? '' : v; }));
   $('#me_out').value = pr.out_max || ''; if (pr.think_budget) $('#me_adv').value = JSON.stringify({ think_budget: pr.think_budget }, null, 2);
   $('#me_tr').textContent += ' · ' + __('cat_preset');
@@ -744,14 +748,15 @@ async function medSave() {
   const k = $('#me_k').value, id = $('#me_id').value.trim(), words = (s) => s.trim() ? s.trim().split(/\s+/) : [];
   let e; try { e = JSON.parse($('#me_adv').value.trim() || '{}'); } catch (_) { e = null; }
   if (!e || typeof e !== 'object' || Array.isArray(e)) return toast(__('cat_bad_json'));
-  const caps = [...document.querySelectorAll('#med .cap:checked')].map(x => x.value);
+  const caps = [...document.querySelectorAll('#med .cap:checked')].map(x => x.value), R = ROLES[k], rs = R.map((r, i) => $('#me_r' + i).value);
+  if (k === 'text' && !rs[0]) return toast(__(R[0][2]));
+  // each filled slot as its flag and file, then the args typed
+  e.args = R.reduce((o, r, i) => rs[i] ? o.concat(r[0].split('|')[0], rs[i]) : o, []).concat(words($('#me_args').value));
   if (k === 'text') {
-    if (!$('#me_f').value) return toast(__('cat_file'));
-    e.args = ['-m', $('#me_f').value].concat($('#me_mm').value ? ['--mmproj', $('#me_mm').value] : [], $('#me_dr').value ? ['-md', $('#me_dr').value] : [], words($('#me_args').value));
     if (ED.dirty || Array.isArray(ED.e.caps)) e.caps = caps;
     ['think_sampling', 'instruct_sampling'].forEach((s, j) => { const o = {}; SAMP.forEach(p => { const v = $(`#me_s${j}_${p}`).value; if (v !== '') o[p] = +v; }); if (Object.keys(o).length) e[s] = o; });
     if (+$('#me_out').value) e.out_max = +$('#me_out').value;
-  } else { e.args = words($('#me_args').value); e.task = caps.length > 1 ? 'both' : caps[0] || 'create'; }
+  } else e.task = caps.length > 1 ? 'both' : caps[0] || 'create';
   if ($('#me_unc')) e.uncensored = $('#me_unc').checked;
   if ($('#me_ttl').value.trim()) e.ttl = $('#me_ttl').value.trim();
   if ($('#me_note').value.trim()) e.note = $('#me_note').value.trim();

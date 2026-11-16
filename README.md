@@ -17,7 +17,7 @@ A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](
 
 - **OpenAI and Anthropic compatible.** `/v1/chat/completions`, `/v1/completions`, `/v1/models` and `/v1/messages`, with streaming, tools and vision. `/v1/models` reports each model's `context_length` (what it serves) and `max_context_length` (its trained maximum).
 - **Local models with llama.cpp.** Load and stop each model from the panel. A model is never stopped while it answers, and its conversations are kept between loads.
-- **Model catalog.** A folder is a model: copy its `.gguf` (or a quant subfolder such as `IQ3_XXS/`) with its companions, the vision projector and the draft model, into its own folder and add it with **+**. Pick the folder and the editor offers only that folder's files, taking a lone one by itself. The server reads the GGUF header (architecture and trained context), and the editor sets the type, title, engine arguments, capabilities (vision, video, audio, tools, reasoning), sampling and the 🔓 uncensored label, for text and image models.
+- **Model catalog.** A folder is a model: copy its files into its own folder and add it with **+**. A text model brings its `.gguf` (or a quant subfolder such as `IQ3_XXS/`) with its vision projector and draft model; an image or video model brings its diffusion model, text encoder and VAE, `.gguf` or `.safetensors`, its parts one subfolder down. Pick the folder and the editor offers only that folder's files, one select per file the engine takes, taking a lone one by itself. The server reads the GGUF header (architecture and trained context), and the editor sets the type, title, engine arguments, capabilities (vision, video, audio, tools, reasoning), sampling and the 🔓 uncensored label.
 - **53ON's calibration.** For the models we run and tune (Qwen3.8 27B and Flash-Next, Qwen3.5 4B and 9B), add the `.gguf` and the editor fills its engine arguments, drafts, sampling, reasoning budget and answer length from [catalog.json](catalog.json).
 - **Images.** Create and edit pictures with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp); a text model draws by calling the `generate_image` tool.
 - **Cloud providers.** Relay Anthropic, OpenAI, Google, DeepSeek, Groq, Alibaba, OpenRouter and more through the same API. Provider keys stay on the server, and the server's own cloud catalog says the context of each cloud model.
@@ -39,7 +39,7 @@ The first start writes `config.json` from `config.example.json` and creates the 
 
 1. Open `http://<server>:11500/admin` from the local network and enter the token.
 2. **Settings › Engine:** choose *stable* or *newest*. The server downloads [our llama.cpp build](https://github.com/enriqxxx/llama.cpp/releases) into `~/engines`, verifies its sha256, tests it and switches to it.
-3. **Models:** copy each model into its own folder, `~/models/<name>/`, with its companions beside it (the `mmproj` if it sees images, the draft model if it has one), then add it with **+** and pick its folder.
+3. **Models:** copy each model into its own folder, `~/models/<name>/`, with its companions beside it (for text, the `mmproj` if it sees images and the draft model if it has one; for images and video, the diffusion model, text encoder and VAE), then add it with **+** and pick its folder.
 4. **Keys:** create a key for each client. Clients use `http://<server>:11500/v1` with that key.
 
 To run it as a service, edit `User` and `WorkingDirectory` in [deploy/ia-server.service](deploy/ia-server.service) and install it:
