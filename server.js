@@ -23,7 +23,7 @@ process.on('SIGTERM', down);
 process.on('SIGINT', down);
 
 // this server's version and its home: the panel's About asks GitHub for a newer release (the browser asks, never the server)
-const VERSION = '1.0.0', REPO = 'enriqxxx/53on-ai-server';
+const VERSION = '1.0.0', REPO = '53on/53on-ai-server';
 const CFG_PATH = path.join(__dirname, 'config.json');
 let cfg = { port: 11500, public_url: '', max_concurrent: 1, keys: [], admin_token: '', lang: 'en' };
 // config.json, or on a first start the template (the first save writes it as config.json)
@@ -539,18 +539,24 @@ function catalogScan() {
   const ls = (p) => { try { return fs.readdirSync(p).sort(); } catch (_) { return []; } }, base = (x) => x.replace(/-\d+-of-\d+\.gguf$/i, '');
   Object.keys(ms).forEach((id) => (ms[id].args || []).forEach((x, i, a) => /^(-m|--model|-mm|--mmproj)$/.test(x) && a[i + 1] && mark(a[i + 1], id)));
   (JSON.stringify(cfg.images || {}).match(/[^"]+\.gguf(?=")/g) || []).forEach((f) => mark(f, '🎨'));
-  ls(dir).forEach((d) => { const fl = ls(path.join(dir, d)); fl.forEach((f) => {
-    const sh = /-(\d+)-of-\d+\.gguf$/i.exec(f), p = path.join(dir, d, f); if (!/\.gguf$/i.test(f) || sh && +sh[1] !== 1) return;
-    const m = ggufMeta(p), gb = (sh ? fl.filter((x) => base(x) === base(f)) : [f]).reduce((s, x) => { try { return s + fs.statSync(path.join(dir, d, x)).size; } catch (_) { return s; } }, 0);
-    files.push({ dir: d, file: f, path: p, gb: +(gb / 1e9).toFixed(1), train: m.train || 0, used: use[real(p)] || [],
+  // a folder is a model; a variant may sit one level down (IQ3_XXS/…), still its folder's
+  const scan = (d, sub) => { const at = path.join(dir, d, sub), fl = ls(at); fl.forEach((f) => {
+    const sh = /-(\d+)-of-\d+\.gguf$/i.exec(f), p = path.join(at, f);
+    if (!/\.gguf$/i.test(f)) { if (!sub) { try { if (fs.statSync(p).isDirectory()) scan(d, f); } catch (_) {} } return; }
+    if (sh && +sh[1] !== 1) return;
+    const m = ggufMeta(p), gb = (sh ? fl.filter((x) => base(x) === base(f)) : [f]).reduce((s, x) => { try { return s + fs.statSync(path.join(at, x)).size; } catch (_) { return s; } }, 0);
+    files.push({ dir: d, file: sub ? sub + '/' + f : f, path: p, gb: +(gb / 1e9).toFixed(1), train: m.train || 0, used: use[real(p)] || [],
       kind: m.arch === 'clip' || /mmproj/i.test(f) ? 'eyes' : /(^|[-_.])(mtp|draft|dflash)/i.test(f) ? 'draft' : 'model' });
-  }); });
+  }); };
+  ls(dir).forEach((d) => scan(d, ''));
   // presets: 53ON's own calibration per model file (catalog.json), filled in when a matching .gguf is added
   let presets = {}; try { presets = JSON.parse(fs.readFileSync(path.join(__dirname, 'catalog.json'), 'utf8')); } catch (_) {}
   return { dir: dir, real: real(dir), files: files, presets: presets, text: ms, image: (cfg.images || {}).models || {}, video: (cfg.videos || {}).models || {}, cloud: (cfg.cloud || {}).catalog || {} };
 }
 // a kind is what a model makes (OpenRouter's output modality) and the config section that holds it; video has no engine yet
 const KIND = { text: 'chat', image: 'images', video: 'videos' };
+// uncensored: the owner's word (the editor's 🔓); never set, the model's name, files and note tell
+const unc = (e, name) => e.uncensored ?? /ablit|uncens|uncnr|unfilter|heretic|dolphin|nsfw/i.test(name + ' ' + (e.args || []).join(' ') + ' ' + (e.note || ''));
 const kindOn = (k, n) => k === 'text' ? (cfg.on || []).includes(n) || !!(chat.list().find((r) => r.name === n) || {}).state
   : k === 'image' && !!(images.list().find((r) => r.id === n) || {}).state;
 function handleAdmin(req, res, p) {
@@ -594,12 +600,12 @@ function handleAdmin(req, res, p) {
     keys: (cfg.keys || []).map(k => ({ name: k.name, key: k.key, image: imgFlag(k.image) })),
     // title and note from the model's own entry: the server's catalog is its config
     downloaded: chat.list().map(m => { const e = cfg.chat.models[m.name] || {};
-      return Object.assign(m, { ttl: e.ttl || '', note: e.note || '', uncensored: /ablit|uncens|uncnr|unfilter|heretic|dolphin|nsfw/i.test(m.name + ' ' + m.gguf + ' ' + (e.note || '')) });
+      return Object.assign(m, { ttl: e.ttl || '', note: e.note || '', uncensored: unc(e, m.name + ' ' + m.gguf) });
     // cloud and Claude rows share this shape, so the panel lists them with no extra code; off, they come with state 'off'
     }).concat([panelModel()], cloud.panelModels(CLOUD)),
     loaded: chat.loaded(),
     // local image models (sd-server spawned on demand) with live state; video ones are catalog only, no engine yet
-    images: images.list(), videos: Object.keys((cfg.videos || {}).models || {}),
+    images: images.list().map((m) => Object.assign(m, { uncensored: unc(((cfg.images || {}).models || {})[m.id] || {}, m.id) })), videos: Object.keys((cfg.videos || {}).models || {}),
     ctx_cap: ctxCap(), rates: Object.keys(prices.table()).length,
     // the drawer paired with the main model, normalized: same object as GET /tools
     tools: { image: cloud.toolCfg(CLOUD, 'image') }

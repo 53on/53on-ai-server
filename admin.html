@@ -662,11 +662,16 @@ $('#models').addEventListener('click', async e => {
 });
 // Catalog editor: ✏️ edits an entry, + adds one; files are put by hand in the models folder.
 let CAT = null, ED = null;
-const SAMP = ['temperature', 'top_p', 'top_k', 'min_p', 'presence_penalty'], RM = /^(-m|--model)$/, RMM = /^(-mm|--mmproj)$/;
+const SAMP = ['temperature', 'top_p', 'top_k', 'min_p', 'presence_penalty'], RM = /^(-m|--model)$/, RMM = /^(-mm|--mmproj)$/, RMD = /^(-md|--model-draft)$/, RF = /^(-m|--model|-mm|--mmproj|-md|--model-draft)$/;
+const opt = (v, t, s) => `<option value="${esc(v)}"${s ? ' selected' : ''}>${esc(t)}</option>`;
+// a folder is a model: its selects see only its own files (one named elsewhere still shows, as it is)
+const fopts = (kind, d, cur, none) => { const L = (CAT.files || []).filter(f => f.kind === kind && f.dir === d);
+  return (none ? opt('', __('cat_none'), !cur) : '') + L.map(f => opt(f.path, f.file + ' · ' + f.gb + ' GB' + (f.train ? ' · ' + fmtK(f.train) : '')
+    + (f.used.length ? ' · ' + f.used.join(', ') : ''), f.path === cur)).join('') + (cur && !L.some(f => f.path === cur) ? opt(cur, cur, true) : ''); };
 const CAPS = { text: ['vision', 'video', 'audio', 'tools', 'thinking'], image: ['create', 'edit'], video: ['create', 'edit'] };
 const capTx = (k, c) => __(k === 'text' ? 'cap_' + c : (k === 'image' ? 'img_' : 'vid_') + c);
 const argAt = (a, re) => { const i = a.findIndex(x => re.test(x)); return i > -1 ? a[i + 1] || '' : ''; };
-const argRest = (a) => a.filter((x, i) => !/^(-m|--model|-mm|--mmproj)$/.test(x) && !/^(-m|--model|-mm|--mmproj)$/.test(a[i - 1] || '')).join(' ');
+const argRest = (a) => a.filter((x, i) => !RF.test(x) && !RF.test(a[i - 1] || '')).join(' ');
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ebtn'); if (b) { e.preventDefault(); catEdit(b.dataset.k, b.dataset.e); } });
 async function catEdit(k, id) {
   try { CAT = await api('/catalog'); } catch (_) { return toast(__('no_data')); }
@@ -676,31 +681,34 @@ async function catEdit(k, id) {
   medPaint(); const m = $('#med'); m.hidden = false; m.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 function medPaint() {
-  const k = ED.k, e = ED.e, a = e.args || [], F = CAT.files || [], opt = (v, t, s) => `<option value="${esc(v)}"${s ? ' selected' : ''}>${esc(t)}</option>`;
-  const files = (kind, cur, none) => (none ? opt('', __('cat_none'), !cur) : '') + F.filter(f => f.kind === kind).map(f => opt(f.path,
-    f.dir + '/' + f.file + ' · ' + f.gb + ' GB' + (f.train ? ' · ' + fmtK(f.train) : '') + (f.used.length ? ' · ' + f.used.join(', ') : ''), f.path === cur)).join('')
-    + (cur && !F.some(f => f.path === cur) ? opt(cur, cur, true) : '');
+  const k = ED.k, e = ED.e, a = e.args || [], F = CAT.files || [];
   // ticked = allowed if the model has it; never set = all (text) or its task (pictures)
   const on = Array.isArray(e.caps) ? e.caps : k === 'text' ? CAPS.text : e.task === 'both' ? ['create', 'edit'] : [e.task || 'create'];
-  const adv = Object.assign({}, e); ['args', 'caps', 'task', 'note', 'out_max', 'think_sampling', 'instruct_sampling'].forEach(x => delete adv[x]);
+  const adv = Object.assign({}, e); ['args', 'caps', 'task', 'ttl', 'note', 'out_max', 'think_sampling', 'instruct_sampling', 'uncensored'].forEach(x => delete adv[x]);
   // its files = the ones the server found it naming (realpath)
   const mine = (kind, raw) => (ED.id && F.find(x => x.kind === kind && x.used.includes(ED.id)) || {}).path || raw;
-  const f = mine('model', argAt(a, RM)), mm = mine('eyes', argAt(a, RMM)), cur = F.find(x => x.path === f);
+  const f = mine('model', argAt(a, RM)), mm = mine('eyes', argAt(a, RMM)), dr = argAt(a, RMD), cur = F.find(x => x.path === f);
+  const D = ED.d != null ? ED.d : (cur || {}).dir || '', dirs = [...new Set(F.filter(x => x.kind === 'model').map(x => x.dir))];
   let h = `<div class="msec">${ED.id ? '✏️ ' + esc(ED.id) : '➕ ' + __('cat_add')}</div>`
     + `<div class="mut" style="font-size:12px">${__('cat_where', ['<code>' + esc(CAT.real || CAT.dir) + '/&lt;' + __('cat_folder') + '&gt;/</code>'])}</div>`
     + `<div class="row"><div style="max-width:150px"><label>${__('cat_type')}</label><select id="me_k" onchange="ED.k=this.value;medPaint()">${['text', 'image', 'video'].map(t => opt(t, __('ty_' + t), t === k)).join('')}</select></div>`
     + `<div><label>${__('name')}</label><input id="me_id" value="${esc(ED.id || (k === 'image' ? 'local/' : ''))}"></div></div>`;
-  if (k === 'text') h += `<label>${__('cat_file')}</label><select id="me_f" onchange="medFile()">${f ? '' : opt('', '—', 1)}${files('model', f)}</select>`
+  if (k === 'text') h += `<label>${__('cat_dir')}</label><select id="me_d" onchange="medDir()">${D ? '' : opt('', '—', 1)}${dirs.map(d => opt(d, d, d === D)).join('')}</select>`
+    + `<label>${__('cat_file')}</label><select id="me_f" onchange="medFile()">${f ? '' : opt('', '—', 1)}${fopts('model', D, f)}</select>`
     + `<div id="me_tr" class="mut" style="font-size:12px;margin-top:4px">${cur && cur.train ? __('cat_train', [fmtK(cur.train)]) : ''}</div>`
-    + `<label>${__('cat_eyes')}</label><select id="me_mm">${files('eyes', mm, 1)}</select>`
+    + `<label>${__('cat_eyes')}</label><select id="me_mm">${fopts('eyes', D, mm, 1)}</select>`
+    + `<label>${__('cat_draft')}</label><select id="me_dr">${fopts('draft', D, dr, 1)}</select>`
     + `<label>${__('cat_args')}</label><input id="me_args" value="${esc(ED.id ? argRest(a) : '-ngl 99 -fa on --jinja')}">`;
   else h += `<label>${__('cat_args')}</label><textarea id="me_args" rows="3">${esc(a.join(' '))}</textarea>`
     + (k === 'video' ? `<div class="mut" style="font-size:12px;margin-top:4px">${__('cat_no_engine')}</div>` : '');
   h += `<label>${__('cat_caps')}</label><div class="caps">${CAPS[k].map(c => `<label><input type="checkbox" class="cap" value="${c}"${on.includes(c) ? ' checked' : ''} onchange="ED.dirty=1"> ${capTx(k, c)}</label>`).join('')}</div>`;
+  // the label shown is the server's (the owner's word or the file's name): ticked or not, saving makes it the owner's
+  if (k !== 'video') h += `<div class="caps"><label><input type="checkbox" id="me_unc"${((k === 'text' ? DL.find(x => x.name === ED.id) : IMGS.find(x => x.id === ED.id)) || {}).uncensored ? ' checked' : ''}> 🔓 ${__('uncensored')}</label></div>`;
   if (k === 'text') ['think_sampling', 'instruct_sampling'].forEach((s, j) => { const v = e[s] || {};
     h += `<label>${__(j ? 'cat_instruct' : 'cat_think')} <span class="mut">· ${__('cat_blank')}</span></label><div class="samp">`
       + SAMP.map(p => `<input id="me_s${j}_${p}" type="number" step="any" placeholder="${p}" title="${p}" value="${v[p] != null ? esc(v[p]) : ''}">`).join('') + '</div>'; });
   h += `<div class="row">${k === 'text' ? `<div style="max-width:170px"><label>${__('cat_out')}</label><input id="me_out" type="number" min="0" value="${e.out_max || ''}"></div>` : ''}`
+    + `<div><label>${__('cat_ttl')}</label><input id="me_ttl" value="${esc(e.ttl || '')}"></div>`
     + `<div><label>${__('cat_note')}</label><input id="me_note" value="${esc(e.note || '')}"></div></div>`
     + `<details class="sp"><summary class="mut" style="cursor:pointer;font-size:12px">${__('cat_adv')}</summary><textarea id="me_adv" rows="6">${esc(JSON.stringify(adv, null, 2))}</textarea></details>`
     + `<div class="row sp"><div style="flex:0"><button onclick="medSave()">${__('save')}</button></div><div style="flex:0"><button class="ghost" onclick="medClose()">${__('cancel')}</button></div>`
@@ -708,16 +716,22 @@ function medPaint() {
   $('#med').innerHTML = h;
 }
 // a picked file names a new entry after its folder, with the only mmproj beside it
+// the folder leads: its model, eyes and draft are the only choices, and a lone one is taken
+function medDir() {
+  const d = ED.d = $('#me_d').value, one = (k) => { const L = CAT.files.filter(f => f.kind === k && f.dir === d); return L.length === 1 ? L[0].path : ''; }, m = one('model');
+  $('#me_f').innerHTML = (m ? '' : opt('', '—', 1)) + fopts('model', d, m);
+  $('#me_mm').innerHTML = fopts('eyes', d, one('eyes'), 1); $('#me_dr').innerHTML = fopts('draft', d, one('draft'), 1);
+  if (!ED.id) $('#me_id').value = d;
+  medFile();
+}
 function medFile() {
   const f = (CAT.files || []).find(x => x.path === $('#me_f').value); if (!f) return;
   $('#me_tr').textContent = f.train ? __('cat_train', [fmtK(f.train)]) : '';
-  const ey = CAT.files.filter(x => x.kind === 'eyes' && x.dir === f.dir);
-  if (!$('#me_mm').value && ey.length === 1) $('#me_mm').value = ey[0].path;
-  if (!$('#me_id').value.trim()) $('#me_id').value = f.dir;
   // a new entry for a file 53ON has calibrated takes its preset: arguments (drafts beside it), sampling, budget, length
-  const pr = !ED.id && (CAT.presets || {})[f.file], near = (n) => (CAT.files.find(x => x.dir === f.dir && x.file === n) || {}).path || n;
+  const bn = (x) => x.split('/').pop(), pr = !ED.id && (CAT.presets || {})[bn(f.file)], near = (n) => (CAT.files.find(x => x.dir === f.dir && bn(x.file) === n) || {}).path || n;
   if (!pr) return;
-  $('#me_id').value = pr.id; $('#me_args').value = pr.args.map(x => /\.gguf$/i.test(x) ? near(x) : x).join(' ');
+  const pa = pr.args.map(x => /\.gguf$/i.test(x) ? near(x) : x);
+  $('#me_id').value = pr.id; $('#me_args').value = argRest(pa); if (argAt(pa, RMD)) $('#me_dr').value = argAt(pa, RMD);
   if (pr.mmproj) $('#me_mm').value = near(pr.mmproj);
   ['think_sampling', 'instruct_sampling'].forEach((s, j) => SAMP.forEach(p => { const v = (pr[s] || {})[p]; $(`#me_s${j}_${p}`).value = v == null ? '' : v; }));
   $('#me_out').value = pr.out_max || ''; if (pr.think_budget) $('#me_adv').value = JSON.stringify({ think_budget: pr.think_budget }, null, 2);
@@ -733,11 +747,13 @@ async function medSave() {
   const caps = [...document.querySelectorAll('#med .cap:checked')].map(x => x.value);
   if (k === 'text') {
     if (!$('#me_f').value) return toast(__('cat_file'));
-    e.args = ['-m', $('#me_f').value].concat($('#me_mm').value ? ['--mmproj', $('#me_mm').value] : [], words($('#me_args').value));
+    e.args = ['-m', $('#me_f').value].concat($('#me_mm').value ? ['--mmproj', $('#me_mm').value] : [], $('#me_dr').value ? ['-md', $('#me_dr').value] : [], words($('#me_args').value));
     if (ED.dirty || Array.isArray(ED.e.caps)) e.caps = caps;
     ['think_sampling', 'instruct_sampling'].forEach((s, j) => { const o = {}; SAMP.forEach(p => { const v = $(`#me_s${j}_${p}`).value; if (v !== '') o[p] = +v; }); if (Object.keys(o).length) e[s] = o; });
     if (+$('#me_out').value) e.out_max = +$('#me_out').value;
   } else { e.args = words($('#me_args').value); e.task = caps.length > 1 ? 'both' : caps[0] || 'create'; }
+  if ($('#me_unc')) e.uncensored = $('#me_unc').checked;
+  if ($('#me_ttl').value.trim()) e.ttl = $('#me_ttl').value.trim();
   if ($('#me_note').value.trim()) e.note = $('#me_note').value.trim();
   medDone(await api('/catalog', 'POST', Object.assign({ type: k, id: id, entry: e }, ED.id ? { from: ED.id, from_type: ED.k0 } : {})), __('cat_saved', [id]));
 }
@@ -861,7 +877,7 @@ function render(s) {
     + `<div class="sp"><b>${__('caps')}:</b> ${__('caps_list', ['<code>generate_image</code>'])}</div>`
     + `<div class="sp"><b>${__('compat')}:</b><div class="mut" style="font-size:12px;margin-top:4px"><code>/v1/chat/completions</code> · <code>/v1/completions</code> · <code>/v1/models</code> · <code>/v1/messages</code></div></div>`
     + `<div class="sp mut">${__('about_counts', [DL.length, (s.keys || []).length])}</div>`
-    + `<div class="sp">${[s.repo && lk('https://github.com/' + s.repo, I53, '53ON AI Server'), lk('https://github.com/enriqxxx/53on-harness', I53, '53ON Harness'), lk('https://apps.apple.com/us/app/53on/id6758736136', I53, '53ON iOS', 'App Store'), lk('https://play.google.com/store/apps/details?id=com.vcorps.five_three_on', I53, '53ON Android', 'Google Play'), E.repo && lk('https://github.com/' + E.repo, '🦙', esc(E.name || 'llama.cpp')), E.guide && lk(E.guide, '📖', __('guide')), lk('https://paypal.me/enriqxmen', '☕', __('coffee'), 'PayPal')].filter(Boolean).join('')}</div>`
+    + `<div class="sp">${[s.repo && lk('https://github.com/' + s.repo, I53, '53ON AI Server'), lk('https://github.com/53on/53on-harness', I53, '53ON Harness'), lk('https://apps.apple.com/us/app/53on/id6758736136', I53, '53ON iOS', 'App Store'), lk('https://play.google.com/store/apps/details?id=com.vcorps.five_three_on', I53, '53ON Android', 'Google Play'), E.repo && lk('https://github.com/' + E.repo, '🦙', esc(E.name || 'llama.cpp')), E.guide && lk(E.guide, '📖', __('guide')), lk('https://paypal.me/enriqxmen', '☕', __('coffee'), 'PayPal')].filter(Boolean).join('')}</div>`
     + `<div class="sp mut" style="font-size:11px">${__('about_foot')}</div><div class="mut" style="font-size:11px;margin-top:4px">${__('about_legal')}</div>`);
   SEL = s.on || []; FREE = s.free; val('#ctxcap', s.ctx_cap || 8192); ctxTag();
   TOOLS = s.tools || {};
@@ -903,7 +919,7 @@ function render(s) {
   };
   // While any picture is pending every image button waits: loading or unloading one would kill it.
   const ib = IMGS.some(m => m.busy || m.jobs);
-  const imgRow = (m) => row(esc(m.id), '', chips(m.state === 'loading' && '⏳ ' + __('loading'), m.busy && '⏳ ' + __('generating'), m.err && bad('⚠️ ' + __('engine_fail'), m.err)) + size(m.mem_gb || m.gb, !!m.state), ebtn('image', m.id) + lbtn(m.id, !!m.state, ib, m.gb));
+  const imgRow = (m) => row(esc(m.id), '', chips(m.state === 'loading' && '⏳ ' + __('loading'), m.busy && '⏳ ' + __('generating'), m.err && bad('⚠️ ' + __('engine_fail'), m.err), m.uncensored && __('uncensored')) + size(m.mem_gb || m.gb, !!m.state), ebtn('image', m.id) + lbtn(m.id, !!m.state, ib, m.gb));
   const cardSky = (m) => row('☁️ ' + esc(m.name), '', chips(/^(no_balance|bad_key)/.test(m.state) && bad(CST[m.state]), m.ctx && __('n_ctx', [fmtK(+m.ctx)]), esc(m.provLabel || m.prov),
     `<span class="pill spd" data-m="${esc(m.name)}" data-c="1"></span>`), lbtn(m.name, SEL.includes(m.name), m.state === 'off', 0));
   const LOC = DL.filter(m => !m.cloud), SKY = DL.filter(m => m.cloud);

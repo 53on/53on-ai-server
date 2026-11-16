@@ -9,15 +9,15 @@ A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](
 ![53ON AI Server: the models, the model editor, the cloud catalog and the API keys](assets/screenshots.png)
 
 > [!TIP]
-> **Give your AI a memory and a body with [53ON Harness](https://github.com/enriqxxx/53on-harness).** It remembers between sessions, sees your screen, speaks, browses and works on your PC, and it uses this server as its model. Pair them and your AI runs entirely at home.
+> **Give your AI a memory and a body with [53ON Harness](https://github.com/53on/53on-harness).** It remembers between sessions, sees your screen, speaks, browses and works on your PC, and it uses this server as its model. Pair them and your AI runs entirely at home.
 >
-> [![Get 53ON Harness](https://img.shields.io/badge/Get-53ON%20Harness-7C5CFF?style=for-the-badge)](https://github.com/enriqxxx/53on-harness/releases/latest) [![53ON on the App Store](https://img.shields.io/badge/App%20Store-53ON-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://apps.apple.com/us/app/53on/id6758736136) [![53ON on Google Play](https://img.shields.io/badge/Google%20Play-53ON-01875F?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.vcorps.five_three_on)
+> [![Get 53ON Harness](https://img.shields.io/badge/Get-53ON%20Harness-7C5CFF?style=for-the-badge)](https://github.com/53on/53on-harness/releases/latest) [![53ON on the App Store](https://img.shields.io/badge/App%20Store-53ON-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://apps.apple.com/us/app/53on/id6758736136) [![53ON on Google Play](https://img.shields.io/badge/Google%20Play-53ON-01875F?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.vcorps.five_three_on)
 
 ## Features
 
 - **OpenAI and Anthropic compatible.** `/v1/chat/completions`, `/v1/completions`, `/v1/models` and `/v1/messages`, with streaming, tools and vision. `/v1/models` reports each model's `context_length` (what it serves) and `max_context_length` (its trained maximum).
 - **Local models with llama.cpp.** Load and stop each model from the panel. A model is never stopped while it answers, and its conversations are kept between loads.
-- **Model catalog.** Copy a `.gguf` into its own folder and add it with **+**. The server reads the GGUF header (architecture and trained context) and the editor sets its type, vision projector, engine arguments, capabilities (vision, video, audio, tools, reasoning) and sampling.
+- **Model catalog.** A folder is a model: copy its `.gguf` (or a quant subfolder such as `IQ3_XXS/`) with its companions, the vision projector and the draft model, into its own folder and add it with **+**. Pick the folder and the editor offers only that folder's files, taking a lone one by itself. The server reads the GGUF header (architecture and trained context), and the editor sets the type, title, engine arguments, capabilities (vision, video, audio, tools, reasoning), sampling and the 🔓 uncensored label, for text and image models.
 - **53ON's calibration.** For the models we run and tune (Qwen3.8 27B and Flash-Next, Qwen3.5 4B and 9B), add the `.gguf` and the editor fills its engine arguments, drafts, sampling, reasoning budget and answer length from [catalog.json](catalog.json).
 - **Images.** Create and edit pictures with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp); a text model draws by calling the `generate_image` tool.
 - **Cloud providers.** Relay Anthropic, OpenAI, Google, DeepSeek, Groq, Alibaba, OpenRouter and more through the same API. Provider keys stay on the server, and the server's own cloud catalog says the context of each cloud model.
@@ -30,7 +30,7 @@ A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](
 Ubuntu 24.04 with Node.js 18 or newer:
 
 ```
-git clone https://github.com/enriqxxx/53on-ai-server.git
+git clone https://github.com/53on/53on-ai-server.git
 cd 53on-ai-server
 node server.js
 ```
@@ -39,7 +39,7 @@ The first start writes `config.json` from `config.example.json` and creates the 
 
 1. Open `http://<server>:11500/admin` from the local network and enter the token.
 2. **Settings › Engine:** choose *stable* or *newest*. The server downloads [our llama.cpp build](https://github.com/enriqxxx/llama.cpp/releases) into `~/engines`, verifies its sha256, tests it and switches to it.
-3. **Models:** copy each model into its own folder, `~/models/<name>/` (the `.gguf`, and its `mmproj` beside it if it sees images), then add it with **+**.
+3. **Models:** copy each model into its own folder, `~/models/<name>/`, with its companions beside it (the `mmproj` if it sees images, the draft model if it has one), then add it with **+** and pick its folder.
 4. **Keys:** create a key for each client. Clients use `http://<server>:11500/v1` with that key.
 
 To run it as a service, edit `User` and `WorkingDirectory` in [deploy/ia-server.service](deploy/ia-server.service) and install it:
@@ -93,7 +93,7 @@ Everything is set from the panel and saved to `config.json`; while the server ru
 
 ## Works with 53ON Harness
 
-[53ON Harness](https://github.com/enriqxxx/53on-harness) gives your AI a memory that stays and hands, eyes and voice on your own PC, and it connects to this server as its model. The rest of 53ON, from WhatsApp answered by your AI to your own store, is at [53on.com](https://53on.com) and in the 53ON app for [iOS](https://apps.apple.com/us/app/53on/id6758736136) and [Android](https://play.google.com/store/apps/details?id=com.vcorps.five_three_on).
+[53ON Harness](https://github.com/53on/53on-harness) gives your AI a memory that stays and hands, eyes and voice on your own PC, and it connects to this server as its model. The rest of 53ON, from WhatsApp answered by your AI to your own store, is at [53on.com](https://53on.com) and in the 53ON app for [iOS](https://apps.apple.com/us/app/53on/id6758736136) and [Android](https://play.google.com/store/apps/details?id=com.vcorps.five_three_on).
 
 ## Support
 
