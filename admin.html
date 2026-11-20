@@ -6,9 +6,12 @@
 <title>53ON AI Server</title>
 <link rel="icon" href="/admin/logo.png">
 <style>
-  :root{--bg:#0f1117;--card:#1a1d28;--ln:#2a2f3e;--tx:#e6e9f0;--mut:#8b93a7;--ac:#6c8cff;--ok:#3ecf8e;--dz:#ff6b6b;--in:#0f1117}
-  :root[data-theme=light]{--bg:#f5f6f6;--card:#fff;--ln:#d5d9d9;--tx:#111;--mut:#565959;--ac:#007aff;--ok:#0ca678;--dz:#e03131;--in:#eef0f5}
-  @media (prefers-color-scheme:light){:root:not([data-theme]){--bg:#f5f6f6;--card:#fff;--ln:#d5d9d9;--tx:#111;--mut:#565959;--ac:#007aff;--ok:#0ca678;--dz:#e03131;--in:#eef0f5}}
+  /* tokens: Strata's (github.com/Niko1221/Strata, MIT; Copyright (c) 2026 Niko1221 and the Strata contributors;
+     app/host/src/styles/kit/tokens.css) under this panel's own names; new ones: --lns line-soft, --tx2 ink-soft, --ach accent hover,
+     --aci ink on accent, --act accent as text, --att accent tint, --dzt/--dzx danger tint/text, --wn warn, --fo focus, --shc/--shp card/pop shadows */
+  :root{--bg:#0e1113;--card:#161a1d;--ln:#2a3036;--lns:#22272c;--tx:#eef1f3;--tx2:#c7cdd3;--mut:#8e979f;--ac:#34d399;--ach:#4ade80;--aci:#052e20;--act:#4ade80;--att:rgba(52,211,153,.12);--ok:#34d399;--dz:#ff5a6e;--dzt:rgba(255,90,110,.12);--dzx:#ff8a98;--wn:#f5b53d;--in:#1d2226;--fo:#7b93ff;--shc:0 1px 2px rgba(0,0,0,.4);--shp:0 16px 48px rgba(0,0,0,.55),0 1px 3px rgba(0,0,0,.4)}
+  :root[data-theme=light]{--bg:#f9fafb;--card:#fff;--ln:#dee5ee;--lns:#eee;--tx:#221e1f;--tx2:#303030;--mut:#6f6f6f;--ac:#10b981;--ach:#0c8a60;--aci:#fff;--act:#0c8a60;--att:#ecfdf5;--ok:#0c8a60;--dz:#e0283f;--dzt:#fdecee;--dzx:#b01a2e;--wn:#e39b0b;--in:#f7f7f7;--fo:#405de6;--shc:0 18px 7px rgba(0,0,0,.01),0 10px 6px rgba(0,0,0,.02),0 4px 4px rgba(0,0,0,.03),0 1px 2px rgba(0,0,0,.04);--shp:0 10px 40px rgba(15,23,42,.08),0 1px 3px rgba(15,23,42,.06)}
+  @media (prefers-color-scheme:light){:root:not([data-theme]){--bg:#f9fafb;--card:#fff;--ln:#dee5ee;--lns:#eee;--tx:#221e1f;--tx2:#303030;--mut:#6f6f6f;--ac:#10b981;--ach:#0c8a60;--aci:#fff;--act:#0c8a60;--att:#ecfdf5;--ok:#0c8a60;--dz:#e0283f;--dzt:#fdecee;--dzx:#b01a2e;--wn:#e39b0b;--in:#f7f7f7;--fo:#405de6;--shc:0 18px 7px rgba(0,0,0,.01),0 10px 6px rgba(0,0,0,.02),0 4px 4px rgba(0,0,0,.03),0 1px 2px rgba(0,0,0,.04);--shp:0 10px 40px rgba(15,23,42,.08),0 1px 3px rgba(15,23,42,.06)}}
   *{box-sizing:border-box} body{margin:0;font:14px/1.5 Inter,system-ui,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--tx)}
   .wrap{max-width:780px;margin:0 auto;padding:22px 16px 60px}
   h1{font-size:20px;margin:0 0 2px} .sub{color:var(--mut);font-size:12px}
@@ -320,6 +323,47 @@
 #uh summary{cursor:pointer;font-size:12px;color:var(--mut);margin-top:8px}
 #mn_fold{transition:transform .15s}
 @media(max-width:1023px){.vtabs{background:var(--card);border-top-color:var(--ln)}.vtab[aria-selected="true"]{color:var(--ac)}}
+</style>
+<style>
+/* ── STRATA SKIN: the look of Strata's app (github.com/Niko1221/Strata, MIT; Copyright (c) 2026 Niko1221 and the Strata
+   contributors; app/host/src/styles/kit/components.css: card, button, tabs, pill, table, progress) over this panel's markup, CSS over
+   CSS, last so it wins. Strata's face (GT Walsheim Pro) is a licensed font: the same stack is named, so a machine that has it shows it
+   and the rest get the system's. ── */
+body{font-family:"GT Walsheim Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+h1{font-weight:900;letter-spacing:-.01em}
+a{color:var(--act)}
+:focus-visible{outline:2px solid var(--fo);outline-offset:2px}
+.card,:root:not([data-theme=light]) .card{border-radius:20px;padding:20px;box-shadow:var(--shc)}
+.card h2{font-size:12px;font-weight:500;letter-spacing:.04em;color:var(--mut)}
+button{border-radius:14px;padding:10px 18px;font-weight:700;color:var(--aci);box-shadow:0 6px 16px rgba(16,185,129,.24),inset 0 1px 0 rgba(255,255,255,.18);transition:background .16s cubic-bezier(.2,.7,.2,1),transform .12s}
+button:disabled{box-shadow:none}
+button.tg{border-radius:12px;padding:8px 12px}
+button.ghost{background:transparent;border:1.5px solid var(--ln);color:var(--tx);box-shadow:none}
+button.ghost:hover:not(:disabled){background:var(--in)}
+button.danger{background:var(--dzt);color:var(--dzx);box-shadow:none}
+button.dz{border-radius:10px;box-shadow:none}
+button.play{background:var(--ok);color:var(--aci)}
+.vtab,.preI,.kmenu .mi,.ebtn,.lbtn{box-shadow:none}
+input,select,textarea{border-radius:10px}
+input:focus,select:focus,textarea:focus{border-color:var(--fo);box-shadow:0 0 0 3px color-mix(in srgb,var(--fo) 22%,transparent)}
+th{font-weight:500;font-size:12px;letter-spacing:.04em;color:var(--mut);border-bottom-color:var(--ln)}
+td{border-bottom-color:var(--lns);color:var(--tx2)}
+.pill{border-radius:9999px;font-weight:500;color:var(--tx2)}
+.pill:hover{border-color:var(--ac)}
+code{border-radius:8px}
+.vbar{border-radius:9999px;height:8px;border-color:var(--lns)} .vbar>i{border-radius:inherit;background:var(--ac)}
+.vbar.warn>i{background:var(--wn)} .vbar.full>i{background:var(--dz)} .amb{color:var(--wn)}
+.toast{background:var(--ac);color:var(--aci);border-radius:14px;box-shadow:var(--shp)}
+.askb{border-radius:20px;box-shadow:var(--shp)}
+.mn-c,.med,.lnk,#mn_cv{border-radius:14px} .mn-c{background:var(--card)}
+.mn-h{font-weight:500;letter-spacing:.04em} .mn-v{font-weight:900;letter-spacing:-.01em}
+.mn-d.g{background:var(--ac);box-shadow:0 0 0 4px var(--att)} .mn-d.y{background:var(--wn);box-shadow:none} .mn-d.r{background:var(--dz);box-shadow:none}
+/* tabs: Strata's segmented bar (a tray, the chosen one raised); the phone row keeps its own shape, the chosen one in the accent's text */
+@media(min-width:1024px){.vtabs{background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:4px;gap:4px}}
+.vtab{border-radius:10px;font-weight:500;color:var(--mut)}
+.vtab:hover{background:transparent;color:var(--tx)}
+.vtab[aria-selected="true"]{background:var(--card);color:var(--tx);font-weight:700;box-shadow:var(--shc)}
+@media(max-width:1023px){.vtab[aria-selected="true"]{background:transparent;color:var(--act);box-shadow:none}}
 </style>
 <div id="toast" class="toast"></div>
 <div id="ask" class="ask" hidden><div class="askb"><div id="askm"></div><div class="askr"><button class="ghost" id="askn" data-t="cancel"></button><button id="asky" data-t="ok"></button></div></div></div>

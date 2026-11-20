@@ -502,6 +502,68 @@ const GW = (() => { try {
 const fromNet = (req) => { const ip = ipOf(req); return (!!GW && ip === GW) || !images.LAN.check(ip, ip.includes(':') ? 'ipv6' : 'ipv4'); };
 // Constant-time equality (no length or prefix leaks through timing); different lengths are simply unequal.
 const same = (a, b) => { a = Buffer.from(String(a)); b = Buffer.from(String(b)); return a.length === b.length && crypto.timingSafeEqual(a, b); };
+
+// ADMIN APPS: local web tools the owner lists in config.json "apps" (none by default), served on this port under their own path and
+// behind this server's lock: the house network only (like /admin) and the admin token, typed once into a small sign-in page that trades
+// it for an HttpOnly cookie scoped to the app's path (12 h; a restart signs everyone out). GETs pass through, event streams included; a
+// POST passes only if its path matches one of the app's "post" patterns, comes from this server's own pages (same Origin) and is small.
+// "open": true drops the sign-in for that app (the house network still only), for a tool that holds nothing to guard.
+//   "apps": [{ "path": "/tool", "port": 39000, "post": ["^/run$"], "open": false }]
+const APP_S = new Map();   // session id -> { path, exp }
+const appOf = (p) => (cfg.apps || []).find((a) => a && typeof a.path === 'string' && /^\/[a-z0-9_-]+$/i.test(a.path) && !/^\/(v1|admin|health|meta)$/.test(a.path)
+  && +a.port > 0 && (p === a.path || p.indexOf(a.path + '/') === 0));
+const htm = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+function appSignIn(res, a, bad) {
+  const t = i18n.bag('ui');
+  res.writeHead(401, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+  res.end(`<!doctype html><html lang="${htm(i18n.lang())}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${htm(a.path)}</title><style>
+:root{--bg:#f9fafb;--card:#fff;--ln:#dee5ee;--tx:#221e1f;--mut:#6f6f6f;--ac:#10b981;--aci:#fff;--dz:#e0283f;--fo:#405de6;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1113;--card:#161a1d;--ln:#2a3036;--tx:#eef1f3;--mut:#8e979f;--ac:#34d399;--aci:#052e20;--dz:#ff5a6e;--fo:#7b93ff;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--bg);color:var(--tx);font:14px/1.55 "GT Walsheim Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+form{width:100%;max-width:360px;background:var(--card);border:1px solid var(--ln);border-radius:20px;padding:24px}
+h1{margin:0 0 16px;font-size:18px;font-weight:900;letter-spacing:-.01em}label{display:block;font-size:12px;font-weight:500;color:var(--mut);margin-bottom:6px}
+input{width:100%;padding:10px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit}
+input:focus{outline:none;border-color:var(--fo);box-shadow:0 0 0 3px color-mix(in srgb,var(--fo) 22%,transparent)}
+button{margin-top:14px;width:100%;height:42px;border:0;border-radius:14px;background:var(--ac);color:var(--aci);font:inherit;font-weight:700;cursor:pointer}
+.bad{color:var(--dz);font-size:13px;margin:8px 0 0}
+</style></head><body><form method="post" action="${htm(a.path)}/_signin"><h1>${htm(a.path)}</h1>
+<label for="t">${htm(t.admin_token)}</label><input id="t" name="token" type="password" autocomplete="current-password" autofocus required>
+${bad ? `<p class="bad">${htm(t.bad_token)}</p>` : ''}<button>${htm(t.log_in)}</button></form></body></html>`);
+}
+function appDoor(req, res, p, a) {
+  const now = Date.now(); for (const [k, s] of APP_S) if (s.exp < now) APP_S.delete(k);
+  const q = req.url.indexOf('?') < 0 ? '' : req.url.slice(req.url.indexOf('?'));
+  if (p === a.path) { res.writeHead(302, { location: a.path + '/' + q }); return res.end(); }   // the cookie's path ends in /
+  const name = 'app' + a.path.replace(/[^a-z0-9]/gi, '_');
+  if (p === a.path + '/_signin' && req.method === 'POST') {
+    let b = ''; req.on('data', (d) => { b += d; if (b.length > 4096) req.destroy(); });
+    return req.on('end', () => {
+      if (!cfg.admin_token || !same(new URLSearchParams(b).get('token') || '', cfg.admin_token)) return setTimeout(() => appSignIn(res, a, true), 800);
+      const id = crypto.randomBytes(24).toString('hex'); APP_S.set(id, { path: a.path, exp: now + 12 * 3600e3 });
+      res.writeHead(303, { location: a.path + '/', 'cache-control': 'no-store',
+        'set-cookie': `${name}=${id}; Path=${a.path}/; HttpOnly; SameSite=Strict; Max-Age=43200${req.socket.encrypted ? '; Secure' : ''}` });
+      res.end();
+    });
+  }
+  const m = new RegExp('(?:^|;\\s*)' + name + '=([0-9a-f]{48})(?:;|$)').exec(req.headers.cookie || ''), s = m && APP_S.get(m[1]);
+  if (a.open !== true && (!s || s.path !== a.path)) return appSignIn(res, a, false);
+  const sub = req.url.slice(a.path.length) || '/';   // path and query, as the tool sees them
+  if (req.method === 'POST') {
+    if (!(a.post || []).some((r) => { try { return new RegExp(r).test(sub); } catch (_) { return false; } })) return jerr(res, 404, 'Not found.', 'not_found');
+    const o = req.headers.origin;
+    if (o && o !== (req.socket.encrypted ? 'https://' : 'http://') + req.headers.host) return jerr(res, 403, 'Cross-origin request refused.', 'origin');
+  } else if (req.method !== 'GET') return jerr(res, 405, 'Method not allowed.', 'method');
+  const up = http.request({ host: '127.0.0.1', port: +a.port, method: req.method, path: sub,
+    headers: Object.assign({ 'accept-language': req.headers['accept-language'] || '' }, req.method === 'POST' ? { 'content-type': req.headers['content-type'] || 'application/json' } : {}) }, (r) => {
+    const h = { 'cache-control': 'no-store' };
+    for (const n of ['content-type', 'content-length', 'content-disposition']) if (r.headers[n]) h[n] = r.headers[n];
+    res.writeHead(r.statusCode, h); r.pipe(res);
+  });
+  up.on('error', () => { if (!res.headersSent) jerr(res, 502, 'The app at ' + a.path + ' is not running.', 'app_down'); else res.end(); });
+  res.on('close', () => up.destroy());   // the tab closed: its event stream to the app closes too
+  if (req.method !== 'POST') return up.end();
+  let n = 0; req.on('data', (d) => { n += d.length; if (n > 4096) { up.destroy(); req.destroy(); } }); req.pipe(up);
+}
 // One line per admin mutation in audit.log (600, rotated at 256 KB to .1): time, ip, route and what it touched by
 // NAME: a key's label, a model, a provider, a plan size. Never a value that is a secret (the key itself, a provider
 // key, the next admin token, a model layer). Written when the body arrives, so a refused call leaves its trace too.
@@ -900,6 +962,8 @@ const server = _mkServer((req, res) => {
   // streams there instead of waiting for the whole reply
   if (p === '/health' || p === '/') return jres(res, 200, { ok: true, service: 'ia_server', max_concurrent: MAXC, admin: '/admin', meta: '/meta', public_url: cfg.public_url || undefined });
   // 404, not 403: an outsider is not even told there is something here to attack
+  // the owner's admin apps (config.json "apps"): the house network only, like /admin, then appDoor's own lock
+  const app = appOf(p); if (app) return fromNet(req) ? jerr(res, 404, 'Not found.', 'not_found') : appDoor(req, res, p, app);
   if (p.indexOf('/admin') === 0 && fromNet(req)) return jerr(res, 404, 'Not found.', 'not_found');
   // the panel with its words: i18n.js hands it the bag of its surface (ui.), as the 53ON Harness does with its pages
   // the panel's own files, cached a week: 53ON's logo (128 px) and the house help icon (Onboarding's help.svg)

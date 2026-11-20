@@ -91,6 +91,8 @@ Each change is dropped as soon as upstream llama.cpp includes it. The server als
 
 Everything is set from the panel and saved to `config.json`; while the server runs, change it from the panel, not by hand. For HTTPS, put `fullchain.pem` and `privkey.pem` in `certs/`: the server then serves HTTPS on port 11500 and plain HTTP on 11501.
 
+**Admin apps.** A local web tool of your own can sit behind the server's door. List it in `config.json` under `apps`, for example `"apps": [{ "path": "/tool", "port": 39000, "post": ["^/run$"] }]`, and it is served at `http://<server>:11501/tool/`, to the local network only and after the admin token (a small sign-in page sets a 12-hour cookie; `"open": true` drops the sign-in). GET requests pass through, event streams included; a POST passes only if its path matches one of the `post` patterns. There are none by default.
+
 ## Works with 53ON Harness
 
 [53ON Harness](https://github.com/53on/53on-harness) gives your AI a memory that stays and hands, eyes and voice on your own PC, and it connects to this server as its model. The rest of 53ON, from WhatsApp answered by your AI to your own store, is at [53on.com](https://53on.com) and in the 53ON app for [iOS](https://apps.apple.com/us/app/53on/id6758736136) and [Android](https://play.google.com/store/apps/details?id=com.vcorps.five_three_on).
@@ -106,7 +108,7 @@ Everything is set from the panel and saved to `config.json`; while the server ru
 - [llama.cpp](https://github.com/ggml-org/llama.cpp) by ggml-org and its community, the engine that runs every local model here.
 - [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) by leejet, the engine behind image creation and editing.
 - [LiteLLM](https://github.com/BerriAI/litellm), whose public table of model prices tells the server what each cloud request costs.
-- [Strata](https://github.com/Niko1221/Strata), whose model library and file discovery inspired the catalog editor.
+- [Strata](https://github.com/Niko1221/Strata), whose model library and file discovery inspired the catalog editor, and whose design system (colors, spacing and components, MIT) gives the panel its look.
 - The AMD Linux community: the Mesa RADV developers and the [kisak-mesa](https://launchpad.net/~kisak/+archive/ubuntu/kisak-mesa) PPA, which keep Vulkan fast on Ryzen AI Max.
 
 ## Security
