@@ -1,6 +1,6 @@
-# 53ON AI Server
+# 53ON AI Server: your local AI on Ubuntu
 
-**Your own OpenAI-compatible AI server, built for AMD Ryzen AI Max. Local models, cloud providers and API keys in one control panel.**
+**Run your own AI at home. A self-hosted, OpenAI-compatible server for local LLMs on Ubuntu, built for AMD Ryzen AI Max (Strix Halo): local models with llama.cpp, cloud providers and API keys in one control panel.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu-24.04-E95420)](#recommended-setup-amd-ryzen-ai-max) [![AMD Ryzen AI Max](https://img.shields.io/badge/AMD-Ryzen%20AI%20Max-ED1C24)](#recommended-setup-amd-ryzen-ai-max) [![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-339933)](#quick-start) [![53on.com](https://img.shields.io/badge/53on.com-store-7C5CFF)](https://53on.com) [![Buy us a coffee](https://img.shields.io/badge/Buy%20us%20a%20coffee-PayPal-003087?logo=paypal&logoColor=white)](https://paypal.me/enriqxmen)
 
