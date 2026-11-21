@@ -302,6 +302,9 @@
 .vtab:hover{background:var(--in)}
 .vtab[aria-selected="true"]{background:var(--ac);color:#fff}
 .msec{color:var(--tx);border-bottom-color:var(--ln)}
+.mbox{border:1px solid var(--ln);border-radius:10px;padding:2px 10px 8px;margin:10px 0}
+.mtog{cursor:pointer}.mtog::before{content:'▸ ';color:var(--mut)}.mbox.open>.mtog::before{content:'▾ '}.mbox:not(.open)>.mrest{display:none}.mbox>:not(.mtog){margin-left:18px}
+.msub{font-size:11px;color:var(--mut);margin:6px 0 2px}
 .ed-num{border-color:var(--ln);background:var(--in);color:var(--tx)}
 .preI{color:var(--mut)}
 .preI:hover{background:var(--in);color:var(--ac)}
@@ -385,6 +388,7 @@ const imgOpts = v => IMGOPT.map(([k, t]) => `<option value="${k}"${k === (v || '
 const esc = t => String(t == null ? '' : t).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 // Paint only on change: no flicker, open selects and typing survive
 const put = (s, h) => { const e = $(s); if (!e || e._h === h) return 0; e.innerHTML = e._h = h; return 1; };
+const OPEN = new Set();   // Models: the groups opened while this page lives, never saved
 const val = (s, v) => { const e = $(s); if (e && e._v !== v) e.value = e._v = v; };
 const tx = (e, t) => { if (e.textContent !== t) e.textContent = t; };
 const fmtK = (n) => { n = +n || 0; if (n >= 1e6 && n % 1e6 === 0) return (n / 1e6) + 'M';
@@ -691,6 +695,7 @@ async function modelPost(b) {
 }
 // Load/unload buttons of the local rows: chat models through llama-server, image models through sd-server.
 const BUSY = {};
+$('#models').addEventListener('click', e => { const t = e.target.closest('.mtog'); if (!t || e.target.closest('button')) return; const b = t.parentNode; b.classList.toggle('open') ? OPEN.add(b.dataset.g) : OPEN.delete(b.dataset.g); });
 $('#models').addEventListener('click', async e => {
   const b = e.target.closest && e.target.closest('.lbtn'); if (!b) return;
   e.preventDefault();
@@ -972,20 +977,19 @@ function render(s) {
   const cardSky = (m) => row('☁️ ' + esc(m.name), '', chips(/^(no_balance|bad_key)/.test(m.state) && bad(CST[m.state]), m.ctx && __('n_ctx', [fmtK(+m.ctx)]), esc(m.provLabel || m.prov),
     `<span class="pill spd" data-m="${esc(m.name)}" data-c="1"></span>`), lbtn(m.name, SEL.includes(m.name), m.state === 'off', 0));
   const LOC = DL.filter(m => !m.cloud), SKY = DL.filter(m => m.cloud);
-  const sec = (t, n, x) => `<div class="msec">${t} <span class="mut">· ${n}</span>${x || ''}</div>`;
-  const n = (a) => a.length === 1 ? __('n_model', [a.length]) : __('n_models', [a.length]);
-  const IMc = IMGS.filter(m => m.task === 'create'), IMe = IMGS.filter(m => m.task === 'edit'),
-    IMo = IMGS.filter(m => m.task === 'both'), VID = s.videos || [];
-  let html = sec('🧠 ' + __('local'), n(LOC) + (FREE != null ? ' · ' + __('gb_free', [FREE]) : ''),
-    `<button type="button" class="ebtn" data-k="text" data-e="" title="${__('cat_add')}">+</button>`);
-  html += LOC.length ? LOC.map(card).join('') : '<span class="mut">' + __('no_models') + '</span>';
-  if (IMc.length) html += sec('🎨 ' + __('sec_create'), n(IMc)) + IMc.map(imgRow).join('');
-  if (IMe.length) html += sec('✏️ ' + __('sec_edit'), n(IMe)) + IMe.map(imgRow).join('');
-  if (IMo.length) html += sec('🎨 ' + __('sec_both'), n(IMo)) + IMo.map(imgRow).join('');
-  if (VID.length) html += sec('🎬 ' + __('ty_video'), n(VID)) + VID.map(v => row(esc(v), '', bad(__('no_engine')), ebtn('video', v))).join('');
-  if (SKY.length) {
-    html += sec('☁️ API', n(SKY)) + SKY.map(cardSky).join('');
-  }
+  // a box per section, its title folds the rest; what is in play always in sight; open only while the page lives
+  const upL = (m) => !!inVram[m.name] || !!m.state || SEL.includes(m.name), vidRow = v => row(esc(v), '', bad(__('no_engine')), ebtn('video', v));
+  const upI = (m) => !!m.state, upS = (m) => SEL.includes(m.name), off = (L, up) => L.filter(m => !up(m));
+  const box = (k, t, live, rest) => `<div class="mbox${OPEN.has(k) ? ' open' : ''}" data-g="${esc(k)}"><div class="msec mtog">${t}</div>${live}${rest ? `<div class="mrest">${rest}</div>` : ''}</div>`;
+  const sub = (t, L) => L.length ? `<div class="msub">${t}</div>` + L.join('') : '';
+  const IMc = IMGS.filter(m => m.task === 'create'), IMe = IMGS.filter(m => m.task === 'edit'), IMo = IMGS.filter(m => m.task === 'both'), VID = s.videos || [], PR = {};
+  SKY.forEach(m => { const p = m.provLabel || m.prov; (PR[p] = PR[p] || []).push(m); });
+  let html = box('loc', '🧠 ' + __('local') + (FREE != null ? ' <span class="mut">· ' + __('gb_free', [FREE]) + '</span>' : '') + `<button type="button" class="ebtn" data-k="text" data-e="" title="${__('cat_add')}">+</button>`,
+    LOC.filter(upL).map(card).join('') || (LOC.length ? '' : '<span class="mut">' + __('no_models') + '</span>'), off(LOC, upL).map(card).join(''));
+  if (IMGS.length) html += box('img', '🎨 ' + __('image_gen'), IMGS.filter(upI).map(imgRow).join(''),
+    sub('🎨 ' + __('sec_create'), off(IMc, upI).map(imgRow)) + sub('✏️ ' + __('sec_edit'), off(IMe, upI).map(imgRow)) + sub('🎨 ' + __('sec_both'), off(IMo, upI).map(imgRow)));
+  if (VID.length) html += box('vid', '🎬 ' + __('ty_video'), VID.filter(upI).map(vidRow).join(''), off(VID, upI).map(vidRow).join(''));
+  html += Object.keys(PR).map(p => box('sky:' + p, '☁️ ' + esc(p), PR[p].filter(upS).map(cardSky).join(''), off(PR[p], upS).map(cardSky).join(''))).join('');
   put('#models', html);
   paintPerf(); paintUsage();
   // an image model loading or drawing: state every 3 s until it settles
