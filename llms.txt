@@ -1,0 +1,16 @@
+# 53ON AI Server
+
+> Self-hosted AI manager for text, image and video on Ubuntu: an OpenAI- and Anthropic-compatible server that runs local models on llama.cpp and Strata, pictures and video with sound on stable-diffusion.cpp (MiniMax H3), relays cloud providers and hands out API keys, from one control panel. Built for AMD Ryzen AI Max (Strix Halo). MIT, plain Node.js, no dependencies.
+
+## Docs
+
+- [README](https://github.com/53on/53on-ai-server/blob/main/README.md): features, quick start, recommended setup for Ryzen AI Max, our llama.cpp build, Strata
+- [AGENTS.md](https://github.com/53on/53on-ai-server/blob/main/AGENTS.md): the API, the image and video tools, the background video job, the admin API, the code map and the rules for changes
+- [config.example.json](https://github.com/53on/53on-ai-server/blob/main/config.example.json): the configuration the first start copies
+- [catalog.json](https://github.com/53on/53on-ai-server/blob/main/catalog.json): calibrated settings per model file
+
+## Related
+
+- [53ON Harness](https://github.com/53on/53on-harness): memory, eyes, hands and voice for your AI on your PC, using this server as its model
+- [Our llama.cpp build](https://github.com/enriqxxx/llama.cpp/releases): Vulkan, dynamic VRAM, fair scheduling
+- [53on.com](https://53on.com)

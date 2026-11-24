@@ -99,6 +99,8 @@ Everything is set from the panel and saved to `config.json`; while the server ru
 
 **Admin apps.** A local web tool of your own can sit behind the server's door. List it in `config.json` under `apps`, for example `"apps": [{ "path": "/tool", "port": 39000, "post": ["^/run$"] }]`, and it is served at `http://<server>:11501/tool/`, to the local network only and after the admin token (a small sign-in page sets a 12-hour cookie; `"open": true` drops the sign-in). GET requests pass through, event streams included; a POST passes only if its path matches one of the `post` patterns. There are none by default.
 
+**Building on it, or an AI agent?** [AGENTS.md](AGENTS.md) has the API, the image and video tools, the admin API and the code map; [llms.txt](llms.txt) is the short index.
+
 ## Works with 53ON Harness
 
 [53ON Harness](https://github.com/53on/53on-harness) gives your AI a memory that stays and hands, eyes and voice on your own PC, and it connects to this server as its model. The rest of 53ON, from WhatsApp answered by your AI to your own store, is at [53on.com](https://53on.com) and in the 53ON app for [iOS](https://apps.apple.com/us/app/53on/id6758736136) and [Android](https://play.google.com/store/apps/details?id=com.vcorps.five_three_on).
