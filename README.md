@@ -91,6 +91,8 @@ Each change is dropped as soon as upstream llama.cpp includes it. The server als
 
 [Strata](https://github.com/Niko1221/Strata) runs the models llama.cpp does not, such as Inkling's looped layout. Install it with its own installer and tune the model with it, then pick **Strata** as the engine on the model's card: the card names the run config Strata wrote (`strata_profile`) and its port when it is not 8091 (`strata_port`); `chat.strata_bin` in `config.json` says where `strata` lives when it is not on the `PATH`. The server starts `strata serve` with that run config, gives the model as many slots as its `parallel`, reads Strata's live block (`/metrics`) for the panel's slots and the chat's reading counter, and keeps Strata's own output in `strata-<model>.log`.
 
+On a Ryzen AI Max (Strix Halo, `gfx1151`), Strata's only engine is the one for Inkling (`hip-halo`): as of Strata 0.1.66 its Qwen engine has HIP builds for the Radeon RX 6000, RX 7900 and RX 9070 only. `strata models import --plan` recognizes Qwen3.8 Flash-Next's files, but there is no engine to run them here, so on this machine Qwen models run on llama.cpp. Strata's edge with those big MoE models is spreading experts between RAM and a discrete GPU, which unified memory does not need. `strata update --check` tells what your machine gets.
+
 ## Configuration
 
 Everything is set from the panel and saved to `config.json`; while the server runs, change it from the panel, not by hand. For HTTPS, put `fullchain.pem` and `privkey.pem` in `certs/`: the server then serves HTTPS on port 11500 and plain HTTP on 11501.
