@@ -310,5 +310,210 @@
       "max": 8192
     },
     "out_max": 16384
+  },
+  "minimax_h3_fl2va_pruned-Q8_0.gguf": {
+    "id": "minimax-h3",
+    "kind": "video",
+    "task": "fl2va",
+    "title": "MiniMax H3",
+    "args": [
+      "--vae",
+      "vae/minimax_h3_video_vae_fp16.safetensors",
+      "--audio-vae",
+      "vae/minimax_h3_audio_vae_fp32.safetensors",
+      "--llm",
+      "qwen3vl_32b_minimax_h3-Q4_K_M.gguf",
+      "--cfg-scale",
+      "1.0",
+      "--rng",
+      "cpu"
+    ],
+    "gen": {
+      "width": 1344,
+      "height": 768,
+      "fps": 24,
+      "video_frames": 121,
+      "sample_params": {
+        "sample_method": "euler",
+        "scheduler": "simple",
+        "sample_steps": 4,
+        "guidance": {
+          "txt_cfg": 1
+        }
+      },
+      "lora": [
+        {
+          "path": "loras/minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
+          "multiplier": 1
+        }
+      ]
+    },
+    "test": {
+      "width": 864,
+      "height": 480,
+      "fps": 24,
+      "video_frames": 56,
+      "sample_steps": 20
+    },
+    "inputs": {
+      "init_img": "--init-img",
+      "end_img": "--end-img"
+    },
+    "limits": {
+      "seconds": [
+        4,
+        15
+      ],
+      "fps": 24,
+      "short_side": 768,
+      "audio": "32 kHz stereo",
+      "license": "MiniMax H3 Community License",
+      "source": "MiniMaxAI/MiniMax-H3 · unsloth/MiniMax-H3-GGUF · stable-diffusion.cpp docs/models/minimax_h3.md"
+    }
+  },
+  "minimax_h3_ref2va_pruned-Q8_0.gguf": {
+    "id": "minimax-h3-ref",
+    "kind": "video",
+    "task": "ref2va",
+    "title": "MiniMax H3 Ref",
+    "args": [
+      "--vae",
+      "vae/minimax_h3_video_vae_fp16.safetensors",
+      "--audio-vae",
+      "vae/minimax_h3_audio_vae_fp32.safetensors",
+      "--llm",
+      "qwen3vl_32b_minimax_h3-Q4_K_M.gguf",
+      "--cfg-scale",
+      "1.0",
+      "--rng",
+      "cpu"
+    ],
+    "gen": {
+      "width": 1344,
+      "height": 768,
+      "fps": 24,
+      "video_frames": 121,
+      "sample_params": {
+        "sample_method": "euler",
+        "scheduler": "simple",
+        "sample_steps": 4,
+        "guidance": {
+          "txt_cfg": 1
+        }
+      },
+      "lora": [
+        {
+          "path": "loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors",
+          "multiplier": 1
+        }
+      ]
+    },
+    "test": {
+      "width": 864,
+      "height": 480,
+      "fps": 24,
+      "video_frames": 56,
+      "sample_steps": 20
+    },
+    "inputs": {
+      "images": 9,
+      "videos": 3,
+      "audios": 3,
+      "files": 12
+    },
+    "limits": {
+      "seconds": [
+        4,
+        15
+      ],
+      "fps": 24,
+      "short_side": 768,
+      "audio": "32 kHz stereo",
+      "license": "MiniMax H3 Community License",
+      "source": "MiniMaxAI/MiniMax-H3 · unsloth/MiniMax-H3-GGUF · stable-diffusion.cpp docs/models/minimax_h3.md"
+    }
+  },
+  "Qwen3.8-27B-Q8_0.gguf": {
+    "id": "qwen38-27b-clean-q8",
+    "args": [
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-b",
+      "1024",
+      "-ub",
+      "128",
+      "--spec-type",
+      "draft-dflash",
+      "-md",
+      "Qwen3.8-27B-DFlash2-Q4_K_M.gguf",
+      "-ctkd",
+      "q8_0",
+      "-ctvd",
+      "q8_0",
+      "--spec-draft-n-max",
+      "4",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0"
+    ],
+    "mmproj": "mmproj-F16.gguf",
+    "think_sampling": {
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 0
+    },
+    "think_budget": {
+      "low": 2048,
+      "medium": 8192,
+      "high": 32768,
+      "xhigh": 0,
+      "max": 0
+    },
+    "out_max": 131072,
+    "instruct_sampling": {
+      "temperature": 0.7,
+      "top_p": 0.8,
+      "top_k": 20,
+      "min_p": 0,
+      "presence_penalty": 1.5
+    },
+    "ctx": 262144
+  },
+  "Inkling-2-Mini-UD-Q4_K_XL.gguf": {
+    "id": "inkling-2-mini",
+    "args": [
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-b",
+      "1024",
+      "-ub",
+      "128",
+      "--cache-type-k",
+      "q8_0",
+      "--cache-type-v",
+      "q8_0"
+    ],
+    "mmproj": "mmproj-F16.gguf",
+    "think_sampling": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "min_p": 0
+    },
+    "instruct_sampling": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "min_p": 0
+    },
+    "out_max": 16384,
+    "note": "Inkling 2 Mini (Thinking Machines, Apache 2.0, looped transformer 26.4B/5.4B). REQUIERE engine llama.cpp Unsloth b12588-mix-c0c3de8 (layout looped, ROCm gfx1151) O Strata 0.2.19 (pack SQ-20). NO encender hasta tener el motor. Limitar out tokens + turnos agente (bucles de razonamiento). 47 t/s en Strix Halo 128GB con Strata SQ-20."
   }
 }

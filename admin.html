@@ -103,7 +103,7 @@
       <div id="logs" class="card">
         <div class="ch"><h2 data-t="activity"></h2><button class="tg" data-tt="report_tip" onclick="copyReport()">📋 <span data-t="report"></span></button></div>
         <div id="pulseTop" class="mut">—</div>
-        <div class="lg"><table id="pulse"><thead><tr><th data-t="time"></th><th data-t="status"></th><th class="n" data-tt="in_tip" data-t="prompt"></th><th class="n" data-tt="cache_tip" data-t="reused"></th><th class="n" data-tt="out_tip" data-t="output"></th><th class="n" data-tt="tps_tip">Tok/s</th><th class="n" data-t="duration"></th></tr></thead><tbody></tbody></table></div>
+        <div class="lg"><table id="pulse"><thead><tr><th data-t="time"></th><th data-t="status"></th><th data-t="name"></th><th class="n" data-tt="in_tip" data-t="prompt"></th><th class="n" data-tt="cache_tip" data-t="reused"></th><th class="n" data-tt="out_tip" data-t="output"></th><th class="n" data-tt="tps_tip">Tok/s</th><th class="n" data-t="duration"></th></tr></thead><tbody></tbody></table></div>
       </div>
     </aside>
     <div class="tabwrap">
@@ -715,7 +715,7 @@ const SAMP = ['temperature', 'top_p', 'top_k', 'min_p', 'presence_penalty'];
 // a kind's file slots: [flag|alias, file kind, label]; the engine's other args stay as typed (llama-server; sd-server, Wan's for video)
 const ROLES = { text: [['-m|--model', 'model', 'cat_file'], ['--mmproj|-mm', 'eyes', 'cat_eyes'], ['-md|--model-draft', 'draft', 'cat_draft']],
   image: [['--diffusion-model', 'model', 'cat_dit'], ['--llm', 'model', 'cat_llm'], ['--llm_vision', 'eyes', 'cat_llmv'], ['--vae', 'model', 'cat_vae']],
-  video: [['--diffusion-model', 'model', 'cat_dit'], ['--high-noise-diffusion-model', 'model', 'cat_dit2'], ['--t5xxl', 'model', 'cat_t5'], ['--clip_vision', 'model', 'cat_clipv'], ['--vae', 'model', 'cat_vae']] };
+  video: [['--diffusion-model', 'model', 'cat_dit'], ['--high-noise-diffusion-model', 'model', 'cat_dit2'], ['--t5xxl', 'model', 'cat_t5'], ['--clip_vision', 'model', 'cat_clipv'], ['--llm', 'model', 'cat_llm'], ['--vae', 'model', 'cat_vae'], ['--audio-vae', 'model', 'cat_avae']] };
 const rx = (r) => new RegExp('^(' + r[0] + ')$'), isR = (k, x) => ROLES[k].some(r => rx(r).test(x));
 const opt = (v, t, s) => `<option value="${esc(v)}"${s ? ' selected' : ''}>${esc(t)}</option>`;
 // llama-server reads only GGUF; sd-server reads safetensors too
@@ -724,23 +724,24 @@ const fit = (k, f) => k !== 'text' || /\.gguf$/i.test(f.file);
 const fopts = (kind, d, cur, none) => { const L = (CAT.files || []).filter(f => f.kind === kind && f.dir === d && fit(ED.k, f));
   return (none ? opt('', __('cat_none'), !cur) : '') + L.map(f => opt(f.path, f.file + ' · ' + f.gb + ' GB' + (f.train ? ' · ' + fmtK(f.train) : '')
     + (f.used.length ? ' · ' + f.used.join(', ') : ''), f.path === cur)).join('') + (cur && !L.some(f => f.path === cur) ? opt(cur, cur, true) : ''); };
-const CAPS = { text: ['vision', 'video', 'audio', 'tools', 'thinking'], image: ['create', 'edit'], video: ['create', 'edit'] };
+const CAPS = { text: ['vision', 'video', 'audio', 'tools', 'thinking'], image: ['create', 'edit'], video: ['fl2va', 'ref2va'] };
 const capTx = (k, c) => __(k === 'text' ? 'cap_' + c : (k === 'image' ? 'img_' : 'vid_') + c);
 const argAt = (a, re) => { const i = a.findIndex(x => re.test(x)); return i > -1 ? a[i + 1] || '' : ''; };
 const argRest = (k, a) => a.filter((x, i) => !isR(k, x) && !isR(k, a[i - 1] || '')).join(' ');
-document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ebtn'); if (b) { e.preventDefault(); catEdit(b.dataset.k, b.dataset.e); } });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ebtn'); if (b && !b.disabled) { e.preventDefault(); catEdit(b.dataset.k, b.dataset.e); } });
+function placeMed() { const m = $('#med'); if (!ED || !ED.id) return; const row = [...document.querySelectorAll('#models .mdl')].find(d => { const c = d.querySelector('code'); return c && c.textContent === ED.id; }); if (row) row.after(m); }
 async function catEdit(k, id) {
   try { CAT = await api('/catalog'); } catch (_) { return toast(__('no_data')); }
   const e = id && (CAT[k] || {})[id];
   if (id && !e) return toast(__('not_model'));
   ED = { k: k, k0: k, id: id || '', e: e ? JSON.parse(JSON.stringify(e)) : {}, dirty: 0 };
-  medPaint(); const m = $('#med'); m.hidden = false; m.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  medPaint(); const m = $('#med'); m.hidden = false; placeMed();
 }
 function medPaint() {
   const k = ED.k, e = ED.e, a = e.args || [], F = CAT.files || [];
   // ticked = allowed if the model has it; never set = all (text) or its task (pictures)
-  const on = Array.isArray(e.caps) ? e.caps : k === 'text' ? CAPS.text : e.task === 'both' ? ['create', 'edit'] : [e.task || 'create'];
-  const adv = Object.assign({}, e); ['args', 'caps', 'task', 'ttl', 'note', 'out_max', 'think_sampling', 'instruct_sampling', 'uncensored'].forEach(x => delete adv[x]);
+  const on = Array.isArray(e.caps) ? e.caps : k === 'text' ? CAPS.text : e.task === 'both' ? ['create', 'edit'] : [e.task || (k === 'video' ? 'fl2va' : 'create')];
+  const adv = Object.assign({}, e); ['args', 'caps', 'task', 'ttl', 'note', 'out_max', 'think_sampling', 'instruct_sampling', 'uncensored', 'engine', 'strata_port', 'ctx'].forEach(x => delete adv[x]);
   // a slot's file = the scanned one its arg names (a symlinked models root still matches)
   const R = ROLES[k], mine = (raw) => (raw && F.find(x => x.path === raw || raw.endsWith('/' + x.dir + '/' + x.file)) || {}).path || raw;
   const v = R.map(r => mine(argAt(a, rx(r)))), cur = F.find(x => x.path === v[0]);
@@ -754,20 +755,30 @@ function medPaint() {
     + R.map((r, i) => `<label>${__(r[2])}</label><select id="me_r${i}"${i ? '' : ' onchange="medFile()"'}>${i || v[0] ? '' : opt('', '—', 1)}${fopts(r[1], D, v[i], i)}</select>`
       + (i ? '' : `<div id="me_tr" class="mut" style="font-size:12px;margin-top:4px">${cur && cur.train ? __('cat_train', [fmtK(cur.train)]) : ''}</div>`)).join('')
     + `<label>${__('cat_args')}</label><input id="me_args" value="${esc(ED.id ? argRest(k, a) : k === 'text' ? '-ngl 99 -fa on --jinja' : '')}">`
-    + (k === 'video' ? `<div class="mut" style="font-size:12px;margin-top:4px">${__('cat_no_engine')}</div>` : '');
+    + (k === 'text' ? `<label>Motor</label><select id="me_eng"><option value="llama.cpp"${(e.engine||'llama.cpp')==='llama.cpp'?' selected':''}>llama.cpp</option><option value="strata"${e.engine==='strata'?' selected':''}>Strata</option></select>` : '')
+    ;
   h += `<label>${__('cat_caps')}</label><div class="caps">${CAPS[k].map(c => `<label><input type="checkbox" class="cap" value="${c}"${on.includes(c) ? ' checked' : ''} onchange="ED.dirty=1"> ${capTx(k, c)}</label>`).join('')}</div>`;
   // the label shown is the server's (the owner's word or the file's name): ticked or not, saving makes it the owner's
   if (k !== 'video') h += `<div class="caps"><label><input type="checkbox" id="me_unc"${((k === 'text' ? DL.find(x => x.name === ED.id) : IMGS.find(x => x.id === ED.id)) || {}).uncensored ? ' checked' : ''}> 🔓 ${__('uncensored')}</label></div>`;
+  // pictures and clips: what each request sends (gen, sd-server's own fields) and a LoRA from the model's folder
+  if (k !== 'text') { const g = e.gen || {}, sp = g.sample_params || {}, lo = (g.lora || [])[0] || {}, L = F.filter(f => f.dir === D && /lora/i.test(f.path) && /\.safetensors$/i.test(f.file));
+    const n = (i, p, v, s) => `<input id="me_g${i}" type="number" min="0" step="${s || 1}" placeholder="${p}" title="${p}" value="${v != null ? esc(v) : ''}">`;
+    h += `<label>${__('cat_gen')} <span class="mut">· ${__('cat_blank')}</span></label><div class="samp">` + n('w', 'width', g.width, 32) + n('h', 'height', g.height, 32)
+      + n('s', 'steps', sp.sample_steps) + n('g', 'cfg', (sp.guidance || {}).txt_cfg, 'any') + (k === 'video' ? n('f', 'fps', g.fps) + n('n', 'frames', g.video_frames) : '') + '</div>'
+      + `<div class="row"><div><label>Sampler</label><input id="me_gm" placeholder="euler" value="${esc(sp.sample_method || '')}"></div><div><label>Scheduler</label><input id="me_gk" placeholder="simple" value="${esc(sp.scheduler || '')}"></div></div>`
+      + `<div class="row"><div><label>LoRA</label><select id="me_gl">${opt('', __('cat_none'), !lo.path)}${L.map(f => opt(f.path, f.file + ' · ' + f.gb + ' GB', f.path === lo.path)).join('')}${lo.path && !L.some(f => f.path === lo.path) ? opt(lo.path, lo.path, 1) : ''}</select></div>`
+      + `<div style="max-width:120px"><label>${__('cat_lora_w')}</label><input id="me_gx" type="number" step="any" min="0" placeholder="1" value="${lo.multiplier != null ? esc(lo.multiplier) : ''}"></div></div>`
+      + (e.measured && e.measured.gb ? `<div class="mut" style="font-size:12px">${__('cat_measured', [e.measured.gb])}</div>` : ''); }
   if (k === 'text') ['think_sampling', 'instruct_sampling'].forEach((s, j) => { const v = e[s] || {};
     h += `<label>${__(j ? 'cat_instruct' : 'cat_think')} <span class="mut">· ${__('cat_blank')}</span></label><div class="samp">`
       + SAMP.map(p => `<input id="me_s${j}_${p}" type="number" step="any" placeholder="${p}" title="${p}" value="${v[p] != null ? esc(v[p]) : ''}">`).join('') + '</div>'; });
-  h += `<div class="row">${k === 'text' ? `<div style="max-width:170px"><label>${__('cat_out')}</label><input id="me_out" type="number" min="0" value="${e.out_max || ''}"></div>` : ''}`
+  h += `<div class="row">${k === 'text' ? `<div style="max-width:170px"><label>${__('cat_out')}</label><input id="me_out" type="number" min="0" value="${e.out_max || ''}"></div><div style="max-width:170px"><label>Contexto</label><input id="me_ctx" type="number" min="0" step="1024" value="${e.ctx || e.ctx_use || (DL.find(x=>x.name===ED.id)||{}).ctxPlan || ''}" placeholder="65536"></div>` : ''}`
     + `<div><label>${__('cat_ttl')}</label><input id="me_ttl" value="${esc(e.ttl || '')}"></div>`
     + `<div><label>${__('cat_note')}</label><input id="me_note" value="${esc(e.note || '')}"></div></div>`
-    + `<details class="sp"><summary class="mut" style="cursor:pointer;font-size:12px">${__('cat_adv')}</summary><textarea id="me_adv" rows="6">${esc(JSON.stringify(adv, null, 2))}</textarea></details>`
-    + `<div class="row sp"><div style="flex:0"><button onclick="medSave()">${__('save')}</button></div><div style="flex:0"><button class="ghost" onclick="medClose()">${__('cancel')}</button></div>`
+
+    + (k === 'text' ? `<div class="row"><div><label>KV pool</label><input id="me_kvp" type="number" min="0" value="${e.kv_pool||''}"></div><div><label>Cache RAM (GB)</label><input id="me_cram" type="number" step="any" min="0" value="${e.cache_ram!=null?e.cache_ram:''}"></div><div><label>Reasoning budget (max)</label><input id="me_tb" type="number" min="0" value="${(e.think_budget||{}).max||''}"></div></div>` : '')    + `<div class="row sp"><div style="flex:0"><button onclick="medSave()">${__('save')}</button></div><div style="flex:0"><button class="ghost" onclick="medClose()">${__('cancel')}</button></div>`
     + (ED.id ? `<div style="text-align:right"><button class="dz" onclick="medDel()">🗑️ ${__('cat_delete')}</button></div>` : '') + '</div>';
-  $('#med').innerHTML = h;
+  let _m = $('#med'); if (!_m) { _m = document.createElement('div'); _m.id = 'med'; _m.className = 'med sp'; document.body.appendChild(_m); } _m.innerHTML = h;
 }
 // the folder leads: its files are the only choices, a lone one of a kind goes to that kind's first slot,
 // and a new entry is named after the folder
@@ -787,7 +798,7 @@ function medFile() {
   $('#me_id').value = pr.id; $('#me_args').value = argRest('text', pa); if (dr) $('#me_r2').value = dr;
   if (pr.mmproj) $('#me_r1').value = near(pr.mmproj);
   ['think_sampling', 'instruct_sampling'].forEach((s, j) => SAMP.forEach(p => { const v = (pr[s] || {})[p]; $(`#me_s${j}_${p}`).value = v == null ? '' : v; }));
-  $('#me_out').value = pr.out_max || ''; if (pr.think_budget) $('#me_adv').value = JSON.stringify({ think_budget: pr.think_budget }, null, 2);
+  $('#me_out').value = pr.out_max || ''; if (pr.think_budget) ED.e.think_budget = pr.think_budget;
   $('#me_tr').textContent += ' · ' + __('cat_preset');
 }
 function medClose() { $('#med').hidden = true; ED = null; }
@@ -795,8 +806,7 @@ const medDone = (r, m) => { if (!r || !r.ok) return toast(__('failed', [((r || {
 // blank = not set; the advanced JSON keeps the other fields
 async function medSave() {
   const k = $('#me_k').value, id = $('#me_id').value.trim(), words = (s) => s.trim() ? s.trim().split(/\s+/) : [];
-  let e; try { e = JSON.parse($('#me_adv').value.trim() || '{}'); } catch (_) { e = null; }
-  if (!e || typeof e !== 'object' || Array.isArray(e)) return toast(__('cat_bad_json'));
+  let e = JSON.parse(JSON.stringify(ED.e || {}));
   const caps = [...document.querySelectorAll('#med .cap:checked')].map(x => x.value), R = ROLES[k], rs = R.map((r, i) => $('#me_r' + i).value);
   if (k === 'text' && !rs[0]) return toast(__(R[0][2]));
   // each filled slot as its flag and file, then the args typed
@@ -805,7 +815,23 @@ async function medSave() {
     if (ED.dirty || Array.isArray(ED.e.caps)) e.caps = caps;
     ['think_sampling', 'instruct_sampling'].forEach((s, j) => { const o = {}; SAMP.forEach(p => { const v = $(`#me_s${j}_${p}`).value; if (v !== '') o[p] = +v; }); if (Object.keys(o).length) e[s] = o; });
     if (+$('#me_out').value) e.out_max = +$('#me_out').value;
-  } else e.task = caps.length > 1 ? 'both' : caps[0] || 'create';
+    if ($('#me_eng')) e.engine = $('#me_eng').value;
+    if (+$('#me_ctx').value) e.ctx = +$('#me_ctx').value;
+    if ($('#me_kvp') && +$('#me_kvp').value) e.kv_pool = +$('#me_kvp').value;
+    if ($('#me_cram') && $('#me_cram').value !== '') e.cache_ram = +$('#me_cram').value;
+    if ($('#me_tb') && +$('#me_tb').value) e.think_budget = Object.assign({}, e.think_budget, { max: +$('#me_tb').value });
+  } else {
+    // a clip model does one task; a picture model creates, edits or both
+    e.task = k === 'video' ? (caps.includes('ref2va') ? 'ref2va' : 'fl2va') : caps.length > 1 ? 'both' : caps[0] || 'create';
+    const g = JSON.parse(JSON.stringify(e.gen || {})), sp = g.sample_params = g.sample_params || {}, gd = sp.guidance = sp.guidance || {};
+    const v = (i) => { const x = $('#me_g' + i); return x ? x.value.trim() : ''; }, put = (o, key, x, num) => { if (x === '') delete o[key]; else o[key] = num ? +x : x; };
+    put(g, 'width', v('w'), 1); put(g, 'height', v('h'), 1); put(g, 'fps', v('f'), 1); put(g, 'video_frames', v('n'), 1);
+    put(sp, 'sample_steps', v('s'), 1); put(sp, 'sample_method', v('m')); put(sp, 'scheduler', v('k')); put(gd, 'txt_cfg', v('g'), 1);
+    if (v('l')) g.lora = [{ path: v('l'), multiplier: +v('x') || 1 }]; else delete g.lora;
+    if (!Object.keys(gd).length) delete sp.guidance;
+    if (!Object.keys(sp).length) delete g.sample_params;
+    if (Object.keys(g).length) e.gen = g; else delete e.gen;
+  }
   if ($('#me_unc')) e.uncensored = $('#me_unc').checked;
   if ($('#me_ttl').value.trim()) e.ttl = $('#me_ttl').value.trim();
   if ($('#me_note').value.trim()) e.note = $('#me_note').value.trim();
@@ -961,24 +987,25 @@ function render(s) {
   const lbtn = (n, up, busy, gb) => `<button type="button" class="lbtn ${up ? 'danger' : 'play'}" data-m="${esc(n)}" data-a="${up ? 'unload' : 'load'}"${BUSY[n] || busy || low(gb, up) ? ' disabled' : ''}`
     + ` title="${up ? __('stop') : __('serve')}">${BUSY[n] ? '⏳' : up ? '⏹' : '▶︎'}</button>`;
   const row = (n, tip, c, b) => `<div class="mdl"${tip ? ` title="${esc(tip)}"` : ''}><span><code>${n}</code><div>${c}</div></span>${b}</div>`;
-  const ebtn = (k, n) => `<button type="button" class="ebtn" data-k="${k}" data-e="${esc(n)}" title="${__('cat_edit')}">✏️</button>`;
+  // pencil: stopped models only
+  const ebtn = (k, n, up) => `<button type="button" class="ebtn" data-k="${k}" data-e="${esc(n)}"${up ? ' disabled' : ''} title="${__(up ? 'cat_stop_first' : 'cat_edit')}">✏️</button>`;
   const CAP = { vision: __('cap_vision'), video: __('cap_video'), audio: __('cap_audio'), tools: __('cap_tools'), thinking: __('cap_thinking') };
   const card = (m) => {
     const l = inVram[m.name], up = !!l || !!m.state || SEL.includes(m.name), cx = (l && l.ctx) || +m.ctxPlan || 0;
     return row(m.name, [m.ttl, m.note, m.params, m.gguf, m.gb && __('gb_disk', [m.gb])].filter(Boolean).join(' · '), chips(
       m.state === 'loading' && `⏳ ${PH[m.ph] || __('loading')} · ${Math.round((Date.now() - m.since) / 1000)} s`,
       m.err && bad('⚠️ ' + __('engine_fail'), m.err), !l && !m.state && offTxt(m) && bad(offTxt(m)),
-      cx && __('n_ctx', [fmtK(cx)]), ...(m.caps || []).map(c => CAP[c]), m.quant, m.mtp && 'MTP ×' + m.mtp, m.uncensored && __('uncensored'),
-      `<span class="pill spd" data-m="${esc(m.name)}"></span>`) + size(l ? l.vram_gb : m.need, up), ebtn('text', m.name) + lbtn(m.name, up, false, m.need));
+      cx && __('n_ctx', [fmtK(cx)]), ...(m.caps || []).map(c => CAP[c]), m.quant, m.engine === 'strata' ? '⚡ strata' : '🦙 llama.cpp', m.mtp && 'MTP ×' + m.mtp, m.uncensored && __('uncensored'),
+      `<span class="pill spd" data-m="${esc(m.name)}"></span>`, (UD && UD.models && UD.models[m.name]) ? `🔢 ${fmtT((UD.models[m.name].in||0)+(UD.models[m.name].out||0))} tok` : '') + size(l ? l.vram_gb : m.need, up), ebtn('text', m.name, up) + lbtn(m.name, up, false, m.need));
   };
   // While any picture is pending every image button waits: loading or unloading one would kill it.
   const ib = IMGS.some(m => m.busy || m.jobs);
-  const imgRow = (m) => row(esc(m.id), '', chips(m.state === 'loading' && '⏳ ' + __('loading'), m.busy && '⏳ ' + __('generating'), m.err && bad('⚠️ ' + __('engine_fail'), m.err), m.uncensored && __('uncensored')) + size(m.mem_gb || m.gb, !!m.state), ebtn('image', m.id) + lbtn(m.id, !!m.state, ib, m.gb));
+  const imgRow = (m) => row(esc(m.id), '', chips(m.state === 'loading' && '⏳ ' + __('loading'), m.busy && '⏳ ' + __('generating'), m.err && bad('⚠️ ' + __('engine_fail'), m.err), m.uncensored && __('uncensored')) + size(m.mem_gb || m.gb, !!m.state), ebtn('image', m.id, !!m.state) + lbtn(m.id, !!m.state, ib, m.gb));
   const cardSky = (m) => row('☁️ ' + esc(m.name), '', chips(/^(no_balance|bad_key)/.test(m.state) && bad(CST[m.state]), m.ctx && __('n_ctx', [fmtK(+m.ctx)]), esc(m.provLabel || m.prov),
     `<span class="pill spd" data-m="${esc(m.name)}" data-c="1"></span>`), lbtn(m.name, SEL.includes(m.name), m.state === 'off', 0));
   const LOC = DL.filter(m => !m.cloud), SKY = DL.filter(m => m.cloud);
   // a box per section, its title folds the rest; what is in play always in sight; open only while the page lives
-  const upL = (m) => !!inVram[m.name] || !!m.state || SEL.includes(m.name), vidRow = v => row(esc(v), '', bad(__('no_engine')), ebtn('video', v));
+  const upL = (m) => !!inVram[m.name] || !!m.state || SEL.includes(m.name), vidRow = m => row(esc(m.id), '', chips(m.state === 'loading' && '⏳ ' + __('loading'), m.busy && '⏳ ' + __('generating'), m.err && bad('⚠️ ' + __('engine_fail'), m.err), m.uncensored && __('uncensored'), !m.busy && m.last && `<a class="pill" href="${esc(m.last)}" target="_blank" rel="noopener">🎬 ${__('vid_last')}</a>`) + size(m.mem_gb || m.gb, !!m.state), ebtn('video', m.id, !!m.state) + lbtn(m.id, !!m.state, !!m.jobs, m.gb));
   const upI = (m) => !!m.state, upS = (m) => SEL.includes(m.name), off = (L, up) => L.filter(m => !up(m));
   const box = (k, t, live, rest) => `<div class="mbox${OPEN.has(k) ? ' open' : ''}" data-g="${esc(k)}"><div class="msec mtog">${t}</div>${live}${rest ? `<div class="mrest">${rest}</div>` : ''}</div>`;
   const sub = (t, L) => L.length ? `<div class="msub">${t}</div>` + L.join('') : '';
@@ -990,7 +1017,7 @@ function render(s) {
     sub('🎨 ' + __('sec_create'), off(IMc, upI).map(imgRow)) + sub('✏️ ' + __('sec_edit'), off(IMe, upI).map(imgRow)) + sub('🎨 ' + __('sec_both'), off(IMo, upI).map(imgRow)));
   if (VID.length) html += box('vid', '🎬 ' + __('ty_video'), VID.filter(upI).map(vidRow).join(''), off(VID, upI).map(vidRow).join(''));
   html += Object.keys(PR).map(p => box('sky:' + p, '☁️ ' + esc(p), PR[p].filter(upS).map(cardSky).join(''), off(PR[p], upS).map(cardSky).join(''))).join('');
-  put('#models', html);
+  const _med = $('#med'); if (_med) document.body.appendChild(_med); put('#models', html); placeMed();
   paintPerf(); paintUsage();
   // an image model loading or drawing: state every 3 s until it settles
   clearTimeout(IMGW); if (ib || IMGS.some(m => m.state === 'loading') || LOC.some(m => m.state === 'loading' || (m.off || {}).next > Date.now()) || (s.engine_job || {}).state === 'run') IMGW = setTimeout(refresh, 3000);
@@ -1072,10 +1099,11 @@ async function loadPulse() {
   // rows as Strata's Recent requests (strata_cli/overview.py:437-446), from the pulse's own fields: no new load on the server
   const n0 = v => v == null ? '—' : (+v).toLocaleString();
   if (put('#pulse tbody', (d.list || []).slice(0, 15).map(e => { const s = e.cut ? ['amb', __('st_stopped')] : e.ok ? ['ok', __('st_done')] : ['bad', __('st_error')];
-    return `<tr><td>${esc(e.t)}</td><td class="${s[0]}" title="${esc([e.err || e.model, e.key].filter(Boolean).join(' · '))}">${s[1]}</td>`
+    // ours, beside Strata's: the key's name (who asked), and from where on hover
+    return `<tr><td>${esc(e.t)}</td><td class="${s[0]}" title="${esc(e.err || e.model || '')}">${s[1]}</td><td title="${esc(e.from || '')}">${esc(e.key || '—')}</td>`
       + `<td class="n">${n0(e.in)}</td><td class="n">${n0(e.cn)}</td><td class="n">${n0(e.out)}</td>`
       + `<td class="n">${e.tps != null ? (+e.tps).toFixed(1) : '—'}</td><td class="n">${+e.ms ? (e.ms / 1000).toFixed(1) + ' s' : '—'}</td></tr>`; }).join('')
-    || '<tr><td colspan=7 class="mut">' + __('no_activity') + '</td></tr>') && o) DATA();
+    || '<tr><td colspan=8 class="mut">' + __('no_activity') + '</td></tr>') && o) DATA();
 }
 
 // quota presets, scaled to one GPU

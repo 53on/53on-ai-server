@@ -40,7 +40,8 @@ const shards = (f) => { const m = /^(.*-)\d+-of-(\d+)\.gguf$/.exec(f); return m 
 const LOG = (n) => path.join(__dirname, 'llama-' + n.replace(/[^\w.-]/g, '_') + '.log');
 const tail = (n) => { try { const l = fs.readFileSync(LOG(n), 'utf8').slice(-6000).split('\n').filter(Boolean); return (l.filter((x) => /error|fail|abort|lost/i.test(x)).pop() || l.pop() || '').slice(0, 300); } catch (_) { return ''; } };
 // served context: the owner's cap, never over what the model was trained on
-const plan = (n) => { const t = (known[id(n)] || {}).train; return t ? Math.min(t, cap) : cap; };
+// window: the card's ctx (its own calibration), else the default; never past what it trained
+const plan = (n) => { const t = (known[id(n)] || {}).train || Infinity; return Math.min(t, +C.models[id(n)].ctx || cap); };
 // what the model takes now: what its engine reported, within its entry's caps (if set), video only with ffmpeg (video.js)
 const takes = (n, k) => { const d = (C.models[id(n)] || {}).caps;
   return ((known[id(n)] || {}).caps || []).indexOf(k) > -1 && (!Array.isArray(d) || k === 'completion' || d.indexOf(k) > -1) && (k !== 'video' || video.ok()); };
@@ -53,7 +54,10 @@ let room = (gb, who, live, cb) => cb(null);
 // set by the gateway: saves a new measure
 let learnt = () => {};
 // KV measure key: engine, files, args (no tuning flags)
-const kvKey = (n) => keyOf(C.bin, C.models[n].args, Object.assign({}, process.env, C.env || {}));
+// a model's own engine: its card's bin, inside the engines folder; else the global one
+const binOf = (n) => { const b = C.models[n].bin; if (!b) return C.bin;
+  try { const r = fs.realpathSync(b); return r.startsWith(path.dirname(path.dirname(fs.realpathSync(C.bin))) + path.sep) ? r : C.bin; } catch (_) { return C.bin; } };
+const kvKey = (n) => keyOf(binOf(n), C.models[n].args, Object.assign({}, process.env, C.env || {}));
 // KV pool (tokens): catalog kv_pool, else (free - base - picture peak - cache_ram - reserve) / bytes per token, 1 window..1 per slot
 function pool(n, f) {
   const c = plan(n), k = knob(n, 'kv_pool'), kv = (C.models[n].measured || {}).kv;
@@ -90,7 +94,7 @@ function options(raw, ctxCap) {
   // a new build starts with a clean record: deaths on the other one say nothing about it
   if (was !== C.bin) [crash, fail].forEach((o) => Object.keys(o).forEach((n) => delete o[n]));
   // a model gone from the config is killed; one started (or starting) with another context or engine restarts with the new one
-  Object.keys(run).forEach((n) => { if (!has(n)) unload(n); else if (run[n].c && (run[n].c !== plan(n) || run[n].k !== knob(n, 'kv_pool') || run[n].r !== knob(n, 'cache_ram') || was !== C.bin)) restart(n); });
+  Object.keys(run).forEach((n) => { if (!has(n)) unload(n); else if (run[n].c && (run[n].c !== plan(n) || run[n].k !== knob(n, 'kv_pool') || run[n].r !== knob(n, 'cache_ram') || was !== C.bin || !!run[n].strata !== (C.models[n].engine === 'strata'))) restart(n); });
 }
 // requests waiting for the old start wait for the new one
 function restart(n) { const r = run[n], w = r.wait; r.wait = []; unload(n); load(n, r.pin); run[n].wait.push(...w); }
@@ -210,10 +214,39 @@ function learn(n, port, cb) {
   }));
 }
 
+// Strata's live block (GET /metrics): what it reads and writes, slot by slot; null if it does not answer
+const strataLive = (r, cb) => get(r.port, '/metrics', (e, s, j) => cb(!e && s === 200 && j && j.live || null));
+// Strata's slots: its run config's "parallel", else 1
+const strataSlots = (p) => { try { return Math.max(1, +JSON.parse(fs.readFileSync(p, 'utf8')).parallel || 1); } catch (_) { return 1; } };
 // Starts the model's llama-server; cb(err) once it answers. pin = keep it alive (start it again if it dies).
+function loadStrata(n, pin, cb) {
+  const cur = run[n];
+  if (cur) { if (pin) cur.pin = true; return cur.ready ? cb(null) : cur.wait.push(cb); }
+  const mc = C.models[n], port = +mc.strata_port || 8091, bin = C.strata_bin || 'strata', prof = mc.strata_profile;
+  known[n] = Object.assign(known[n] || {}, { train: plan(n), caps: ['completion', 'tools'], slots: strataSlots(prof) });
+  const me = run[n] = { port: port, c: plan(n), k: knob(n,'kv_pool'), r: knob(n,'cache_ram'), ready: false, pin: !!pin, busy: 0, wait: [cb], proc: null, strata: true, live: new Set(), slots: [], wd: {}, at: Date.now() };
+  const done = (e) => { if (run[n] !== me) return; const w = me.wait; me.wait = []; if (e) { unload(n, true); down(n, me, e); } else { me.ready = true; me.readyAt = Date.now(); known[n].up = me.readyAt - me.at; delete fail[n]; touch(n, me); } w.forEach((f) => f(e || null)); };
+  if (!prof) return done(new Error('Strata model needs strata_profile'));
+  const env = Object.assign({}, process.env, C.env || {});
+  // its own words (each request's figures, «N asked, the engine runs M») go to strata-<model>.log, the last run kept as .1
+  const lg = path.join(__dirname, 'strata-' + n.replace(/[^\w.-]/g, '_') + '.log');
+  try { fs.renameSync(lg, lg + '.1'); } catch (_) {}
+  let out = 'ignore'; try { out = fs.openSync(lg, 'w'); } catch (_) {}
+  try { me.proc = spawn(bin, ['serve', '--profile', prof, '--host', '127.0.0.1', '--port', String(port)], { stdio: ['ignore', out, out], env: env }); }
+  catch (e) { return done(e); } finally { if (typeof out === 'number') fs.closeSync(out); }
+  me.proc.on('error', (e) => done(e));
+  me.proc.on('exit', (code, sig) => { if (run[n] !== me) return; delete run[n]; clearTimeout(me.idle); down(n, me, new Error('Strata exited ' + (sig || code))); });
+  const t0 = Date.now(), poll = () => {
+    if (run[n] !== me || me.ready) return;
+    if (Date.now() - t0 > T.load) return done(new Error('Strata did not answer'));
+    get(port, '/v1/models', (e, st) => { if (run[n] !== me) return; if (e || st !== 200) return setTimeout(poll, 1000); done(null); });
+  };
+  setTimeout(poll, 1000);
+}
 function load(n, pin, cb) {
   n = id(n); cb = cb || (() => {});
   if (!has(n)) return cb(new Error('Unknown local chat model: ' + n));
+  if (C.models[n].engine === 'strata') return loadStrata(n, pin, cb);
   const cur = run[n];
   if (cur) { if (pin) { cur.pin = true; clearTimeout(cur.idle); } return cur.ready ? cb(null) : cur.wait.push(cb); }
   clearTimeout(retry[n]); delete retry[n];
@@ -244,9 +277,9 @@ function load(n, pin, cb) {
       // video.js already picked each clip's fps: the engine keeps it
       argOf(C.models[n].args, '--mmproj', '-mm') && !argOf(C.models[n].args, '--video-fps') ? ['--video-fps', '0'] : []);
     const env = Object.assign({}, process.env, C.env || {});
-    me.key = keyOf(C.bin, base, env);
+    me.key = keyOf(binOf(n), base, env);
     const a = base.concat(['--host', '127.0.0.1', '--port', String(me.port = port), '--no-webui', '--metrics', '--alias', n]);
-    try { me.proc = spawn(C.bin, a, { stdio: ['ignore', out, out], env: env }); }
+    try { me.proc = spawn(binOf(n), a, { stdio: ['ignore', out, out], env: env }); }
     catch (e) { return done(e); } finally { if (typeof out === 'number') fs.closeSync(out); }
     me.proc.on('error', (e) => done(e));
     me.proc.on('exit', (code, sig) => {
@@ -333,6 +366,14 @@ function quiet(n, r) { clearTimeout(r.quiet); if (C.slot_dir && !r.busy) r.quiet
 // gen = tokens written, 0 while it reads. The prompt's size is not there: n_prompt_tokens is what the slot's KV holds
 // (cache + read + written). cb(ok); a failed read keeps the last list.
 function poll(n, r, cb) {
+  // Strata's /slots lacks what was read and written: its /metrics live block has them, slot by slot (or the engine's, solo)
+  if (r.strata) return strataLive(r, (L) => {
+    if (L) { const s = (L.slots || []).slice();
+      // a request on Strata's solo path sits in no slot (outside_slots): the engine's own live line stands for it
+      if (/^(reading|generating)$/.test(L.state) && (!s.length || L.outside_slots > 0)) s.push({ slot: s.length, state: L.state, prompt_tokens: L.prompt_tokens, prompt_read: L.prompt_read, generated: L.generated });
+      r.slots = s.map((x) => ({ id: x.slot, busy: x.state !== 'idle', done: +(x.state === 'reading' ? x.prompt_read : x.prompt_tokens) || 0, gen: +x.generated || 0 })); }
+    cb(!!L);
+  });
   get(r.port, '/slots', (e, s, j) => {
     if (!e && s === 200 && Array.isArray(j)) r.slots = j.map((x) => { const nt = [].concat(x.next_token || [])[0] || {};
       return { id: x.id, busy: !!x.is_processing, done: (+x.n_prompt_tokens_cache || 0) + (+x.n_prompt_tokens_processed || 0), gen: +nt.n_decoded || 0 }; });
@@ -357,10 +398,10 @@ const slotsOf = (n) => (known[id(n)] || {}).slots || +C.slots || 4;
 // A healthy 137K prefill moves the mark every ubatch.
 function watch() {
   if (C.slot_dir) prune(C.slot_dir);   // a file past its hour goes even on a quiet night
-  Object.keys(run).forEach((n) => { const r = run[n]; if (!r.ready) return;
+  Object.keys(run).forEach((n) => { const r = run[n]; if (!r.ready || r.strata) return;
     // base keeps its peak (restored slots come after the measure)
     const kv = !r.k && (C.models[n].measured || {}).kv, b = kv && gpuGb(r.proc.pid) - r.p * kv.b / 1e9;
-    if (b > kv.base + 0.1) { kv.base = +b.toFixed(2); learnt(n); }
+    if (kv && b > kv.base + 0.1) { kv.base = +b.toFixed(2); learnt(n); }
     poll(n, r, (ok) => {
       if (run[n] !== r) return;
       const now = Date.now(), w = r.wd, b = r.slots.filter((s) => s.busy), m = b.reduce((a, s) => a + s.done + s.gen, 0);
@@ -393,6 +434,10 @@ function target(n) {
   r.busy++; clearTimeout(r.idle); clearTimeout(r.quiet);
   let over = 0;
   const t = { id: n, prov: 'local', model: n, key: 'local', baseUrl: 'http://127.0.0.1:' + r.port + '/v1', meta: { tools: takes(n, 'tools') }, slots: slotsOf(n),
+    // Strata reads a prompt without saying so in its stream: its live read, as llama-server's prompt_progress (null when not reading)
+    progress: r.strata ? (cb) => strataLive(r, (L) => { const s = L && !L.prompt_total && (L.slots || []).filter((x) => x.state === 'reading');
+      const p = L && (L.prompt_total ? { total: L.prompt_total, processed: L.prompt_read } : s && s.length === 1 ? { total: s[0].prompt_tokens, processed: s[0].prompt_read } : null);
+      cb(p && +p.total ? { total: +p.total, cache: 0, processed: +p.processed || 0, time_ms: Math.round((+L.elapsed_s || 0) * 1000) } : null); }) : null,
     done: () => { if (!over++) { r.busy--; r.live.delete(t); if (run[n] === r) { touch(n, r); quiet(n, r); } } } };
   r.live.add(t);
   return t;
@@ -421,20 +466,20 @@ const gpuPct = (a) => /^(all|9{2,})$/.test(argOf(a, '-ngl', '--n-gpu-layers', '-
 // Panel rows, one per configured model
 function list() {
   return Object.keys(C.models).map((n) => {
-    const a = C.models[n].args, r = run[n], inf = known[n] || {}, m = argOf(a, '-m', '--model');
+    const a = C.models[n].args, r = run[n], inf = known[n] || {}, m = argOf(a, '-m', '--model') || '';
     const mtp = /mtp/.test(argOf(a, '--spec-type')) ? +argOf(a, '--spec-draft-n-max') || 3 : 0;
     const gb = +((gbOf(m) + gbOf(argOf(a, '--mmproj', '-mm'))) / 1e9).toFixed(1), kv = (C.models[n].measured || {}).kv;
     // need = what a start takes: its catalog measure at one full window, else its files
-    return { name: n, gb: gb, need: +(kv ? kv.base + plan(n) * kv.b / 1e9 : gb).toFixed(1),
+    return { name: n, engine: C.models[n].engine || 'llama.cpp', gb: gb, need: +(kv ? kv.base + plan(n) * kv.b / 1e9 : gb).toFixed(1),
       params: inf.params ? (inf.params / 1e9).toFixed(1) + 'B' : '', quant: (/(?:UD-)?I?Q\d\w*|BF16|F16|F32/i.exec(path.basename(m)) || [inf.ftype || ''])[0],
       fam: '', caps: (inf.caps || []).filter((c) => takes(n, c)), ctx: r && r.ready ? inf.ctx : 0, ctxSrc: r && r.ready ? 'served' : 'planned', ctxMax: inf.train || 0, ctxPlan: plan(n),
-      states: inf.levels ? STATES : null, mtp: mtp, mtpHead: mtp && inf.train ? 1 : 0, gguf: path.basename(m), state: r ? (r.ready ? 'loaded' : 'loading') : '', err: fail[n] || '',
+      states: inf.levels ? STATES : null, mtp: mtp, mtpHead: mtp && inf.train ? 1 : 0, gguf: path.basename(m || ''), state: r ? (r.ready ? 'loaded' : 'loading') : '', err: fail[n] || '',
       // the panel says what a start is doing and since when, why a model is down, and how long its last start took
       ph: phase(n), since: r ? r.at : 0, off: r ? undefined : gone[n], up: inf.up || 0, pool: r ? r.p : 0 };
   });
 }
 // Loaded rows for the panel and metrics
-const loaded = () => Object.keys(run).filter((n) => run[n].ready).map((n) => ({ name: n, vram_gb: gpuGb(run[n].proc.pid), gpu_pct: gpuPct(C.models[n].args), ctx: known[n].ctx, pinned: run[n].pin }));
+const loaded = () => Object.keys(run).filter((n) => run[n].ready).map((n) => ({ name: n, vram_gb: run[n].proc ? gpuGb(run[n].proc.pid) : 0, gpu_pct: gpuPct(C.models[n].args), ctx: known[n].ctx, pinned: run[n].pin }));
 
 // the layer staff wrote for a model (cfg.chat.models[n].sys): it goes before the owner's System Prompt
 const layer = (n) => String((C.models[id(n)] || {}).sys || '');

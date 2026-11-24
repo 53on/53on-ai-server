@@ -18,7 +18,7 @@ function _crash(tag, e) { try { fs.appendFileSync(path.join(__dirname, 'crash.lo
 process.on('uncaughtException', (e) => _crash('uncaughtException', e));
 process.on('unhandledRejection', (e) => _crash('unhandledRejection', e));
 // exit once every engine has: a sooner restart reads the memory of a process still dying
-const down = () => { images.unload(); chat.saveAll(() => { const w = () => images.held() ? setTimeout(w, 200) : stop(0); w(); }); };
+const down = () => { images.unload(); videos.unload(); chat.saveAll(() => { const w = () => images.held() || videos.held() ? setTimeout(w, 200) : stop(0); w(); }); };
 process.on('SIGTERM', down);
 process.on('SIGINT', down);
 
@@ -34,14 +34,16 @@ const engine    = require('./claude_engine');
 const chat      = require('./chat_local');
 const cloud     = require('./cloud_relay');
 const images    = require('./image_local');
+const videos    = require('./video_local');
 const mem       = require('./mem');
 const video     = require('./video');
 const anthropic = require('./anthropic');
 const i18n      = require('./i18n');
 images.options(cfg.images);
+videos.options(Object.assign({ bin: (cfg.images || {}).bin || '' }, cfg.videos));
 i18n.lang(cfg.lang);   // the panel's language; one with no lang/<code>.json stays English
 // Owner cap (memory): a chat model serves min(its trained context, cap).
-const ctxCap    = () => Math.max(1024, +cfg.ctx_cap || 8192);
+const ctxCap    = () => Math.max(1024, +cfg.ctx_cap || 32768);   // default window for a card without ctx
 // The engine is a prebuilt llama.cpp in ~/engines/llama-<tag>, never compiled here. ops/update_engine.sh downloads,
 // checks and smoke-tests one, then swaps it in through POST /admin/api/engine {bin}: live, no restart, no sudo.
 // What is particular to the engine (name, source repo, folder prefix, build file, guide) lives in config chat.engine.
@@ -54,29 +56,31 @@ chat.options(cfg.chat, ctxCap());
 // Names stored with a ':latest' tag are the same model as the bare name.
 // local chat turns generating now: a local picture waits for them, the GPU is shared
 let chatGen = 0;
-images.busyWith(() => chatGen > 0);
+images.busyWith(() => chatGen > 0); videos.busyWith(() => chatGen > 0);
 // Memory gate (mem.js measures; the gateway owns both engines). A load starts when no chat model is still starting (the
 // next one measures what it took), a chat model has no picture model beside it (its own RAM is not in gb) and the GPU
 // can take gb. Meanwhile a QUIET engine lets go (a busy one never), measured every 500 ms (a killed process frees on
 // exit) while the load is wanted, until the loader's T.load: then said in words. Unread memory (NaN) refuses nothing.
 function room(gb, who, live, cb) {
-  const img = images.has(who), lim = Date.now() + (img ? images : chat).T.load;
+  const img = images.has(who) || videos.has(who), lim = Date.now() + (videos.has(who) ? videos : images.has(who) ? images : chat).T.load;
   let said = 0;
   const again = () => {
     if (!live()) return;
     const f = mem.free();
-    if (!(chat.starting() || !img && images.held() || f < gb)) return cb(null);
+    if (!(chat.starting() || !img && (images.held() || videos.held()) || f < gb)) return cb(null);
     if (Date.now() >= lim) return cb(new Error('Not enough memory for ' + who + ': needs ' + gb + ' GB, ' + f + ' GB free.'));
-    if (img) chat.idle().forEach((n) => chat.unload(n, false, null, 'yield:' + who)); else if (!images.jobs()) images.unload();
+    // a picture and a clip model never sit together: the quiet one lets go, as an idle chat does
+    if (img) { chat.idle().forEach((n) => chat.unload(n, false, null, 'yield:' + who)); if (videos.has(who) && !images.jobs()) images.unload(); if (images.has(who) && !videos.jobs()) videos.unload(); }
+    else { if (!images.jobs()) images.unload(); if (!videos.jobs()) videos.unload(); }
     if (!said++) console.log('[mem] ' + who + ' needs ' + gb + ' GB, ' + f + ' GB free: waiting for a quiet engine to let go');
     setTimeout(again, 500);
   };
   again();
 }
 // the picture engine let go and owes no picture: the pinned brain comes back
-images.roomWith(room); chat.roomWith(room); images.freedWith(pinLocks);
+images.roomWith(room); chat.roomWith(room); images.freedWith(pinLocks); videos.roomWith(room); videos.freedWith(pinLocks);
 // engines' measures land in the catalog (measured.*)
-images.grewWith(() => saveConfig(true)); chat.learntWith(() => saveConfig(true));
+images.grewWith(() => saveConfig(true)); videos.grewWith(() => saveConfig(true)); chat.learntWith(() => saveConfig(true));
 let   CLA       = engine.options(cfg.claude);
 function applyClaude() { CLA = engine.options(cfg.claude); }
 let   CLOUD     = cloud.options(cfg.cloud);
@@ -470,10 +474,12 @@ function thinkDefault(n) {
   if (t && typeof t === 'object') t = t[n] != null ? t[n] : t[n + ':latest'] != null ? t[n + ':latest'] : t['*'];
   return t == null ? false : t;
 }
+const fmtK = (n) => { n = +n || 0; if (n >= 1e6 && n % 1e6 === 0) return (n / 1e6) + 'M'; if (n % 1048576 === 0) return (n / 1048576) + 'M'; if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'; if (n % 1024 === 0) return (n / 1024) + 'K'; return n >= 1000 ? Math.round(n / 1000) + 'K' : n; };
 // A local model as an OpenAI list entry
 function localModel(m) {
   const c = ctxOf(m), o = { id: m.name, object: 'model', owned_by: 'llama.cpp' };
   o[CTX_FIELD] = c.ctx || m.ctxPlan; o.max_context_length = m.ctxMax || o[CTX_FIELD]; o.context_length_source = c.src;
+  o.context_length_display = fmtK(o[CTX_FIELD]);   // one truth: the server formats, every view shows this
   o.capabilities = m.caps;   // what the model takes now, so a client offers only that (Ollama's names)
   // llama-server's router names (Strata lists an unloaded model the same way): a client can say 'waking up (~14 s)' before it sends
   o.status = { value: m.state || 'unloaded' }; if (m.state !== 'loaded' && m.up) o.status.eta_s = Math.round(m.up / 1000);
@@ -614,6 +620,7 @@ function catalogScan() {
   ls(dir).forEach((d) => scan(d, ''));
   // presets: 53ON's own calibration per model file (catalog.json), filled in when a matching .gguf is added
   let presets = {}; try { presets = JSON.parse(fs.readFileSync(path.join(__dirname, 'catalog.json'), 'utf8')); } catch (_) {}
+  // all text models: a stopped one is editable
   return { dir: dir, real: real(dir), files: files, presets: presets, text: ms, image: (cfg.images || {}).models || {}, video: (cfg.videos || {}).models || {}, cloud: (cfg.cloud || {}).catalog || {} };
 }
 // a kind is what a model makes (OpenRouter's output modality) and the config section that holds it; video has no engine yet
@@ -621,7 +628,7 @@ const KIND = { text: 'chat', image: 'images', video: 'videos' };
 // uncensored: the owner's word (the editor's 🔓); never set, the model's name, files and note tell
 const unc = (e, name) => e.uncensored ?? /ablit|uncens|uncnr|unfilter|heretic|dolphin|nsfw/i.test(name + ' ' + (e.args || []).join(' ') + ' ' + (e.note || ''));
 const kindOn = (k, n) => k === 'text' ? (cfg.on || []).includes(n) || !!(chat.list().find((r) => r.name === n) || {}).state
-  : k === 'image' && !!(images.list().find((r) => r.id === n) || {}).state;
+  : k === 'image' ? !!(images.list().find((r) => r.id === n) || {}).state : k === 'video' && !!(videos.list().find((r) => r.id === n) || {}).state;
 function handleAdmin(req, res, p) {
   const tok = req.headers['x-admin-token'] || (req.headers['authorization'] || '').replace(/^Bearer /, '');
   if (!cfg.admin_token || !same(tok, cfg.admin_token)) return jerr(res, 401, 'Invalid admin token.', 'auth');
@@ -668,7 +675,7 @@ function handleAdmin(req, res, p) {
     }).concat([panelModel()], cloud.panelModels(CLOUD)),
     loaded: chat.loaded(),
     // local image models (sd-server spawned on demand) with live state; video ones are catalog only, no engine yet
-    images: images.list().map((m) => Object.assign(m, { uncensored: unc(((cfg.images || {}).models || {})[m.id] || {}, m.id) })), videos: Object.keys((cfg.videos || {}).models || {}),
+    images: images.list().map((m) => Object.assign(m, { uncensored: unc(((cfg.images || {}).models || {})[m.id] || {}, m.id) })), videos: videos.list().map((m) => Object.assign(m, { uncensored: unc(((cfg.videos || {}).models || {})[m.id] || {}, m.id) })),
     ctx_cap: ctxCap(), rates: Object.keys(prices.table()).length,
     // the drawer paired with the main model, normalized: same object as GET /tools
     tools: { image: cloud.toolCfg(CLOUD, 'image') }
@@ -711,15 +718,16 @@ function handleAdmin(req, res, p) {
     else {
       if (!e || typeof e !== 'object' || !Array.isArray(a) || !a.every((x) => typeof x === 'string')) return jerr(res, 400, 'args must be a list of strings.', 'invalid', 'args');
       const lost = a.find((x) => path.isAbsolute(x) && !fs.existsSync(x)); if (lost) return jerr(res, 400, 'No file at ' + lost + '.', 'invalid', 'args');
-      if (ty === 'text' && !a.some((x, i) => /^(-m|--model)$/.test(x) && a[i + 1])) return jerr(res, 400, 'A text model needs -m <file.gguf>.', 'invalid', 'args');
+      if (ty === 'text' && e.engine !== 'strata' && !a.some((x, i) => /^(-m|--model)$/.test(x) && a[i + 1])) return jerr(res, 400, 'A text model needs -m <file.gguf>.', 'invalid', 'args');
       if ((b.from == null || moved) && ms[id]) return jerr(res, 409, id + ' already exists.', 'exists', 'id');
       if (moved && kindOn(fty, from)) return off(from);
+      if (kindOn(fty, from)) return off(from);   // edit only while stopped
       if ((Q['local:' + from] || {}).n) return jerr(res, 409, 'An answer is running on ' + from + '. Save when it ends.', 'model_busy', 'id');
       // the entry keeps its place in its list
       const nm = {}; if (fty !== ty) delete fms[from];
       Object.keys(ms).forEach((k) => (fty === ty && k === from ? (nm[id] = e) : (nm[k] = ms[k]))); nm[id] = e; cfg[KIND[ty]].models = nm;
     }
-    saveConfig(); if ([ty, fty].includes('text')) chat.options(cfg.chat, ctxCap()); if ([ty, fty].includes('image')) images.options(cfg.images);
+    saveConfig(); if ([ty, fty].includes('text')) chat.options(cfg.chat, ctxCap()); if ([ty, fty].includes('image')) images.options(cfg.images); if ([ty, fty].includes('video')) videos.options(Object.assign({ bin: (cfg.images || {}).bin || '' }, cfg.videos));
     jres(res, 200, { ok: true, id: id });
   });
   // Gateway tools: what a text model can delegate, and to which model.
@@ -790,6 +798,14 @@ function handleAdmin(req, res, p) {
     const on = act ? act === 'load' : b.on !== false, free = mem.free();
     // a play asks first: the catalog says what it takes, mem.js what is free (unread memory refuses nothing)
     const short = (gb, up) => on && !up && gb > free, noRoom = (gb) => jerr(res, 409, name + ' needs ' + gb + ' GB, ' + free + ' GB free. Stop a model first.', 'no_memory', 'model');
+    // video model: the image model's twin, its sd-server starts in the background or is killed now, never under a clip
+    if (videos.has(name)) {
+      if (videos.jobs()) return jerr(res, 409, 'A video is being made. Load or unload a video model when it ends.', 'video_busy', 'model');
+      const vm = videos.list().find((x) => x.id === name) || {};
+      if (short(vm.gb, vm.state)) return noRoom(vm.gb);
+      if (on) videos.load(name); else videos.unload();
+      return jres(res, 200, { ok: true, video: videos.state() });
+    }
     // image model: sd-server starts in the background (the panel polls /state) or is killed now;
     // never under a pending picture, which the kill would fail
     if (images.has(name)) {
@@ -816,6 +832,15 @@ function handleAdmin(req, res, p) {
     pick(n);
     if (!on) { chat.unload(n, false, null, 'owner'); return ok(); }
     chat.load(n, true, (e) => e ? jerr(res, 502, 'llama-server: ' + e.message, 'upstream') : ok());
+  });
+  if (p === '/admin/api/model/engine' && req.method === 'POST') return body((b) => {
+    const name = chat.id(String(b.model || '')), eng = String(b.engine || '');
+    if (!chat.has(name)) return jerr(res, 404, "Unknown model '" + name + "'.", 'not_found', 'model');
+    if (eng !== 'strata' && eng !== 'llama.cpp') return jerr(res, 400, "engine must be strata or llama.cpp.", 'invalid', 'engine');
+    const m = (cfg.chat.models || {})[name]; if (!m) return jerr(res, 404, "no config", 'not_found', 'model');
+    m.engine = eng; saveConfig(); chat.options(cfg.chat, ctxCap());
+    chat.unload(name, false, null, 'engine'); if ((cfg.on || []).includes(name)) chat.load(name, true, () => {});
+    jres(res, 200, { ok: true, model: name, engine: eng });
   });
   if (p === '/admin/api/key' && req.method === 'POST') return body((b) => {
     const key = genKey(); cfg.keys = cfg.keys || [];
@@ -907,7 +932,7 @@ function handleAdmin(req, res, p) {
     if ('public_url' in b) cfg.public_url = String(b.public_url || '').replace(/\/+$/, '');
     if ('max_concurrent' in b) MAXC = Math.max(1, +b.max_concurrent || 1);
     // a new cap restarts the running chat models with it
-    if ('ctx_cap' in b) { cfg.ctx_cap = Math.max(1024, +b.ctx_cap || 8192); chat.options(cfg.chat, ctxCap()); }
+    if ('ctx_cap' in b) { cfg.ctx_cap = Math.max(1024, +b.ctx_cap || 32768); chat.options(cfg.chat, ctxCap()); }
     saveConfig(); jres(res, 200, { ok: true, public_url: cfg.public_url, max_concurrent: MAXC, ctx_cap: ctxCap(), lang: i18n.lang() });
   });
   return jerr(res, 404, 'Unknown admin endpoint.', 'not_found');
@@ -948,6 +973,24 @@ const server = _mkServer((req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   // generated pictures: public like a provider's image URL, unguessable names, served 24 h from creation at most
   // (shared caches keep none: they can be edits of real faces)
+  // generated clips: the pictures' rules, mp4 (a webm from before it), streamed
+  const vid = req.method === 'GET' && /^\/vid\/([0-9a-f]{32})\.(mp4|webm)$/.exec(p);
+  if (vid) { const f = path.join(videos.DIR, vid[1] + '.' + vid[2]), m = videos.making(vid[1]);
+    // a clip still being made answers 202, a failed one 410 with why: a client that left polls its link until it is there
+    if (m === '') { res.writeHead(202, { 'content-type': 'application/json', 'retry-after': '15', 'cache-control': 'no-store' }); return res.end('{"status":"in_progress"}'); }
+    if (m) return jres(res, 410, { error: { message: 'Video generation failed: ' + m, type: 'api_error', param: null, code: 'video_failed' } });
+    return fs.stat(f, (e, st) => {
+    const left = e ? 0 : videos.DAY - (Date.now() - st.mtimeMs);
+    if (left <= 0) { if (!e) fs.unlink(f, () => {}); return jres(res, 404, { error: { message: 'Not found.', type: 'invalid_request_error', param: null, code: 'not_found' } }); }
+    // byte ranges (206): Safari plays a video only from a server that serves them, and players seek with them
+    const r = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || ''), n = st.size;
+    let a = 0, b = n - 1;
+    if (r) { a = r[1] ? +r[1] : n - +r[2]; if (r[1] && r[2]) b = Math.min(+r[2], n - 1); }
+    if (r && (a < 0 || a > b)) { res.writeHead(416, { 'content-range': 'bytes */' + n }); return res.end(); }
+    res.writeHead(r ? 206 : 200, Object.assign({ 'content-type': 'video/' + vid[2], 'content-length': b - a + 1, 'accept-ranges': 'bytes', 'cache-control': 'private, max-age=' + Math.floor(left / 1000) + ', immutable' },
+      r ? { 'content-range': 'bytes ' + a + '-' + b + '/' + n } : {}));
+    fs.createReadStream(f, { start: a, end: b }).pipe(res);
+  }); }
   const img = req.method === 'GET' && /^\/img\/([0-9a-f]{32})\.png$/.exec(p);
   if (img) { const f = path.join(images.DIR, img[1] + '.png'); return fs.stat(f, (e, st) => {
     const left = e ? 0 : images.DAY - (Date.now() - st.mtimeMs);
@@ -1046,6 +1089,25 @@ const server = _mkServer((req, res) => {
         if ((f === 'edit' || f === 'both') && !ed) { const cm = pick(t.model); if (cm && (typeof cm === 'object' || images.can(cm, 'edit'))) ed = cm; }
         return mk || ed ? { run: (a, cb, b, say) => drawWith(mk, ed, a, b, req, res, cb, say) } : null;
       };
+      // The filmer runs generate_video the same way: the tool's local video model, else the first one that makes from text
+      const _filmer = (id) => {
+        const t = cloud.toolCfg(CLOUD, 'video');
+        if (!t.on || videos.has(id) || images.has(id)) return null;
+        const vm = videos.has(t.model) ? t.model : videos.list().map((m) => m.id).find((m) => videos.can(m, 'fl2va'));
+        if (!vm) return null;
+        return { run: (a, cb, b, say) => {
+          // the picture to animate is found as the drawer finds the one to edit: an invented URL stops here
+          const f = imageInput(a, b, baseOf(req));
+          if (f && f.err) return cb({ md: '_(Video generation failed: ' + f.err + ')_', tin: 0, tout: 0, vids: 0, usd: 0, err: f.err });
+          const t0 = Date.now();
+          // a background job: its link goes out with the status, and the clip is kept if this caller leaves
+          const url = videos.make(vm, { prompt: String(a.prompt || ''), seconds: +a.seconds || 0, first: f || '', base: baseOf(req) }, (r) => {
+            try { fs.appendFileSync(path.join(__dirname, 'draw.log'), new Date().toISOString() + ' video ' + vm + ' ' + (Date.now() - t0) + 'ms ' + (r.err ? 'ERR ' + r.err : 'ok') + (f ? ' from picture' : '') + (res.destroyed ? ' kept, caller left' : '') + ' ' + r.url + '\n'); } catch (_) {}
+            cb(r);
+          });
+          if (say) say('Making a video with ' + vm, { video: url });
+        } };
+      };
       // A local stream that waits hears why (Strata's phases: queued, loading): the SSE opens with the status, repeated every
       // 10 s as data, never a comment (idle timers count events). The Anthropic door ('(messages)') pings on its own.
       const _sse = (_pre ? _pre.stream === true : body.indexOf('"stream":true') > -1) && !/\(messages\)$/.test(req.headers['user-agent'] || '');
@@ -1085,7 +1147,7 @@ const server = _mkServer((req, res) => {
           gen = 1; chatGen++;
           if (!_chat) t.path = '/completions';
           // its picture starts once the engine's turn is over: slot, permit and GPU go free (a quiet brain may yield)
-          else if (t.meta.tools) { const dr = _drawer(label); if (dr) t.drawer = { run: (a, cb, b, say) => { ug(); relL(); t.done(); dr.run(a, cb, b, say); } }; }
+          else if (t.meta.tools) { const dr = _drawer(label); if (dr) t.drawer = { run: (a, cb, b, say) => { ug(); relL(); t.done(); dr.run(a, cb, b, say); } }; const fm = _filmer(label); if (fm) t.filmer = { run: (a, cb, b, say) => { ug(); relL(); t.done(); fm.run(a, cb, b, say); } }; }
           // Thinking: the client's level ('think' first, as before; the pack fills reasoning_effort) mapped to what the
           // template takes, none asked = think_default. Media only as data URLs. Returns true when the body changed.
           t.prep = (o) => {
@@ -1147,7 +1209,7 @@ const server = _mkServer((req, res) => {
           let out = false; const relS = () => { if (!out) { out = true; release('cloud'); } };
           res.on('close', relS);
           // the catalog says which providers take tools
-          _sky.drawer = _chat && _sky.meta.tools && _drawer(_sky.id);
+          _sky.drawer = _chat && _sky.meta.tools && _drawer(_sky.id); _sky.filmer = _chat && _sky.meta.tools && _filmer(_sky.id);
           _sky.pre = _pre;
           cloud.relay(res, CLOUD, _sky, body, (d) => {
             relS();

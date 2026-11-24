@@ -211,7 +211,7 @@ function dsContent(c) {
 // ({prompt, size: 1K|2K, image: url to edit}); the gateway adds none (an injected card cost 394 prompt tokens and a cold
 // prefill per chat, measured). cloud.tools[id] = { on, model, edit }: model creates, edit changes a given picture
 // ('provider/modelId' or a local image model). A new capability is an entry plus its runner.
-const TOOLS = { image: { label: 'Image generation', fn: 'generate_image' } };
+const TOOLS = { image: { label: 'Image generation', fn: 'generate_image' }, video: { label: 'Video generation', fn: 'generate_video' } };
 const declares = (b, fn) => Array.isArray(b.tools) && b.tools.some((x) => ((x || {}).function || {}).name === fn);
 const pick = (o) => { const p = Object.keys(o || {}).find((k) => o[k]); return p ? p + '/' + o[p] : ''; };
 // Any stored shape -> {on, model, edit}. Old shapes ({prov:id} map, legacy image_model) are read
@@ -304,10 +304,12 @@ function relay(res, cfg, target, rawBody, onDone, retried) {
   // The drawer comes from the server (it owns the key policy) as {run(args, cb, body)}: cloud or local, never for an
   // image model. Only a request that declares generate_image itself takes it; the rest are piped, timings included.
   const drawer = target.drawer && body.tool_choice !== 'none' && declares(body, TOOLS.image.fn) ? target.drawer : null;
+  // the filmer: generate_video, declared by the client the same way, run by a local video model
+  const filmer = target.filmer && body.tool_choice !== 'none' && declares(body, TOOLS.video.fn) ? target.filmer : null;
 
   // her DNA (card think_more): a doubt (empty, capped, past the gate) brings k-1 more thoughts, the surest by its tail answers
   // llama-server refuses logprobs on a stream with tools: only whole replies ask them; a stream asks reading progress, it bills a stopped thought
-  const dna = target.thinkMore && !drawer && !(+body.n > 1) ? target.thinkMore : null, dnaReqs = [];
+  const dna = target.thinkMore && !drawer && !filmer && !(+body.n > 1) ? target.thinkMore : null, dnaReqs = [];
   let dnaSse = false, dnaLp = false, dnaPp = false;
   if (dna) {
     dnaSse = body.stream === true; dnaLp = body.logprobs === true; dnaPp = body.return_progress === true;
@@ -365,7 +367,7 @@ function relay(res, cfg, target, rawBody, onDone, retried) {
     if (dna) return dnaReply(ur);
     // Text model with the drawing tool offered: the reply is inspected, and if it asked for a
     // picture the gateway draws it and glues it in. The client only ever sees one answer.
-    if (drawer) {
+    if (drawer || filmer) {
       const sse = body.stream === true;
       if (sse && !res.headersSent) res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' });
       // All traffic crosses this path while a drawer is set, so reasoning and the client's tool calls must
@@ -421,12 +423,12 @@ function relay(res, cfg, target, rawBody, onDone, retried) {
         buf += dec.end();
         if (!sse) { try { eat(JSON.parse(buf)); } catch (_) {} }
         over(tm);
-        const wanted = Object.keys(calls).map((k) => calls[k]).filter((c) => c.name === TOOLS.image.fn);
+        const wanted = Object.keys(calls).map((k) => calls[k]).filter((c) => (drawer && c.name === TOOLS.image.fn) || (filmer && c.name === TOOLS.video.fn));
         let tin = u2 ? (+u2.prompt_tokens || +u2.input_tokens || 0) : 0;
         let tout = u2 ? (+u2.completion_tokens || +u2.output_tokens || 0) : 0;
         const hit = cachedOf(u2);
         // the client's own tool calls pass through; only generate_image is intercepted
-        const pass = Object.keys(calls).map((k) => calls[k]).filter((c) => c.name && c.name !== TOOLS.image.fn);
+        const pass = Object.keys(calls).map((k) => calls[k]).filter((c) => c.name && c.name !== TOOLS.image.fn && c.name !== TOOLS.video.fn);
         // the engine's own word wins: a turn cut for length is 'length' even if it managed to emit a tool call
         const fin0 = fr === 'length' ? 'length' : pass.length ? 'tool_calls' : 'stop';
         // a tool call written INSIDE a <think> that never closed: the parser leaves it as reasoning, the tool never
@@ -462,9 +464,9 @@ function relay(res, cfg, target, rawBody, onDone, retried) {
         // keeps proxies and idle-read timeouts from dropping the client meanwhile.
         const ka = setInterval(() => { if (res.destroyed) return; if (!sse && !res.headersSent) res.writeHead(200, { 'content-type': 'application/json' }); res.write(sse ? ': drawing\n\n' : ' '); }, 15000);
         // The drawing's input is paid too (9400 tokens on an edit): it lands on the same key.
-        // say: the drawer names the job the moment it hands it to the image model; the picture chunk ends it.
-        drawer.run(args, (r) => { clearInterval(ka); tin += r.tin; tout += r.tout; finish(r.md, r.imgs, r.usd); }, body,
-          (s) => { if (sse && res.writable) { open(); res.write(ch({ status: s })); } });
+        // say: the drawer names the job the moment it hands it to the image model; the picture chunk ends it. x: a clip's link (video)
+        (wanted[0].name === TOOLS.video.fn ? filmer : drawer).run(args, (r) => { clearInterval(ka); tin += r.tin; tout += r.tout; finish(r.md, r.imgs, r.usd); }, body,
+          (s, x) => { if (sse && res.writable) { open(); res.write(ch(Object.assign({ status: s }, x))); } });
       });
       // cut before its end (the client left or the provider died): nothing sent yet is a 502,
       // else the reply is broken and what the provider already counted is reported
@@ -510,16 +512,21 @@ function relay(res, cfg, target, rawBody, onDone, retried) {
     if (sse) { h['cache-control'] = 'no-cache'; h['x-accel-buffering'] = 'no'; }
     if (!whole) { if (!res.headersSent) res.writeHead(ur.statusCode, h); ur.pipe(res, { end: false }); }
     // only the last 8 KB are kept to read usage and timings
-    let tail = '', seen = 0, closed = false, nb = 0;
+    let tail = '', seen = 0, closed = false, nb = 0, edge = true, rd = 0;
+    // an engine whose stream does not say its reading (Strata): its live read every second, as llama-server's prompt_progress,
+    // only between whole events (edge), only for a client that asked it, and no more once the read is over
+    const pk = sse && target.progress && body.return_progress === true ? setInterval(() => target.progress((p) => {
+      if (!p) { if (rd) clearInterval(pk); return; }
+      rd = 1; if (edge && !closed && !res.destroyed) res.write('data: ' + JSON.stringify({ prompt_progress: p }) + '\n\n'); }), 1000) : 0;
     ur.on('data', (d) => {
       const t = d.toString('utf8');
-      tail = (tail + t).slice(-8192);
+      tail = (tail + t).slice(-8192); edge = /\r?\n\r?\n$/.test(t);
       if (whole) { whole.push(d); if ((nb += d.length) > 16777216) ur.destroy(); }   // one JSON, never 16 MB
       // chunks are counted as they pass: a client that disconnects is still billed for what was generated
       if (t.indexOf('"content"') !== -1) { const m = t.match(/"content"/g); seen += m ? m.length : 0; }
     });
     const finish = (cut) => {
-      if (closed) return; closed = true;
+      if (closed) return; closed = true; clearInterval(pk);
       const tm = tailObj(tail, '"timings"');
       over(tm);
       // a pipe does not end its target when the source dies (the client would wait forever); nothing sent yet is a 502

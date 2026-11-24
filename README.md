@@ -1,10 +1,10 @@
-# 53ON AI Server: your local AI on Ubuntu
+# 53ON AI Server: your local AI manager for text, image and video
 
-**Run your own AI at home. A self-hosted, OpenAI-compatible server for local LLMs on Ubuntu, built for AMD Ryzen AI Max (Strix Halo): local models with llama.cpp, cloud providers and API keys in one control panel.**
+**Run your own AI at home. A self-hosted, OpenAI-compatible AI manager on Ubuntu, built for AMD Ryzen AI Max (Strix Halo): text, image and video models on two local engines, llama.cpp and Strata, plus cloud providers and API keys, in one control panel.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![Ubuntu 24.04](https://img.shields.io/badge/Ubuntu-24.04-E95420)](#recommended-setup-amd-ryzen-ai-max) [![AMD Ryzen AI Max](https://img.shields.io/badge/AMD-Ryzen%20AI%20Max-ED1C24)](#recommended-setup-amd-ryzen-ai-max) [![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-339933)](#quick-start) [![53on.com](https://img.shields.io/badge/53on.com-store-7C5CFF)](https://53on.com) [![Buy us a coffee](https://img.shields.io/badge/Buy%20us%20a%20coffee-PayPal-003087?logo=paypal&logoColor=white)](https://paypal.me/enriqxmen)
 
-A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](https://github.com/ggml-org/llama.cpp), with a control panel to load models, catalog them, relay cloud providers and hand out API keys with quotas. It has no dependencies: plain Node.js, one folder, one process.
+A self-hosted manager that speaks the OpenAI and Anthropic APIs over two engines for text, [llama.cpp](https://github.com/ggml-org/llama.cpp) and [Strata](https://github.com/Niko1221/Strata), and makes pictures and clips with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp), with a control panel to load models, catalog them, relay cloud providers and hand out API keys with quotas. It has no dependencies: plain Node.js, one folder, one process.
 
 ![53ON AI Server: the models, the model editor, the cloud catalog and the API keys](assets/screenshots.png)
 
@@ -16,13 +16,13 @@ A self-hosted server that speaks the OpenAI and Anthropic APIs over [llama.cpp](
 ## Features
 
 - **OpenAI and Anthropic compatible.** `/v1/chat/completions`, `/v1/completions`, `/v1/models` and `/v1/messages`, with streaming, tools and vision. `/v1/models` reports each model's `context_length` (what it serves) and `max_context_length` (its trained maximum).
-- **Local models with llama.cpp.** Load and stop each model from the panel. A model is never stopped while it answers, and its conversations are kept between loads.
-- **Model catalog.** A folder is a model: copy its files into its own folder and add it with **+**. A text model brings its `.gguf` (or a quant subfolder such as `IQ3_XXS/`) with its vision projector and draft model; an image or video model brings its diffusion model, text encoder and VAE, `.gguf` or `.safetensors`, its parts one subfolder down. Pick the folder and the editor offers only that folder's files, one select per file the engine takes, taking a lone one by itself. The server reads the GGUF header (architecture and trained context), and the editor sets the type, title, engine arguments, capabilities (vision, video, audio, tools, reasoning), sampling and the 🔓 uncensored label.
+- **Two engines: llama.cpp and Strata.** Each model's card picks its engine: llama.cpp (our build, or another build named on the card for a model that needs it) or [Strata](https://github.com/Niko1221/Strata), which runs models such as Inkling's looped layout. Load and stop each model from the panel; a model is never stopped while it answers, and its conversations are kept between loads. With either engine the chat sees a long prompt being read, live, and the panel shows each slot as it reads and writes.
+- **Model catalog.** A folder is a model: copy its files into its own folder and add it with **+**. A text model brings its `.gguf` (or a quant subfolder such as `IQ3_XXS/`) with its vision projector and draft model; an image or video model brings its diffusion model, text encoder and VAE, `.gguf` or `.safetensors`, its parts one subfolder down. Pick the folder and the editor offers only that folder's files, one select per file the engine takes, taking a lone one by itself. The server reads the GGUF header (architecture and trained context), and the editor sets the type, title, engine arguments, capabilities (vision, video, audio, tools, reasoning), sampling, context window and the 🔓 uncensored label. Every card carries its own context window; one left blank takes the server's default. Picture and clip cards carry what each request sends (size, steps, cfg, sampler, scheduler, fps, frames) and a LoRA from the model's folder with its strength. A model is edited while it is stopped.
 - **53ON's calibration.** For the models we run and tune (Qwen3.8 27B and Flash-Next, Qwen3.5 4B and 9B), add the `.gguf` and the editor fills its engine arguments, drafts, sampling, reasoning budget and answer length from [catalog.json](catalog.json).
-- **Images.** Create and edit pictures with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp); a text model draws by calling the `generate_image` tool.
+- **Images and video.** Create and edit pictures, and film short clips with sound (MiniMax H3: from text, from a first and last frame, or from references), with [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp). A text model draws by calling the `generate_image` tool and films by calling `generate_video`; to animate a picture, it names the one shown. A clip takes minutes, so it is a background job, as the industry does it: its link comes in the first status message, the clip is made and kept even if the client leaves, and the link answers `202` while it is made, `410` if it failed and the clip once it is there.
 - **Cloud providers.** Relay Anthropic, OpenAI, Google, DeepSeek, Groq, Alibaba, OpenRouter and more through the same API. Provider keys stay on the server, and the server's own cloud catalog says the context of each cloud model.
 - **API keys with plans.** Token quotas, monthly plans, daily caps, image permission, usage per key, export and import.
-- **Live monitor.** GPU use and temperature, memory, power, and every request with its speed.
+- **Live monitor.** GPU use and temperature, memory, power, and every request with who asked and its speed.
 - **English and Spanish,** with help on every card, and a note in About when a newer release is out on GitHub.
 
 ## Quick start
@@ -87,6 +87,10 @@ The panel installs [our own llama.cpp build](https://github.com/enriqxxx/llama.c
 
 Each change is dropped as soon as upstream llama.cpp includes it. The server also runs any recent official build: to use one, stop the server and set `chat.engine` in `config.json` to `"name": "llama.cpp"` and `"repo": "ggml-org/llama.cpp"`.
 
+## Strata, the second engine
+
+[Strata](https://github.com/Niko1221/Strata) runs the models llama.cpp does not, such as Inkling's looped layout. Install it with its own installer and tune the model with it, then pick **Strata** as the engine on the model's card: the card names the run config Strata wrote (`strata_profile`) and its port when it is not 8091 (`strata_port`); `chat.strata_bin` in `config.json` says where `strata` lives when it is not on the `PATH`. The server starts `strata serve` with that run config, gives the model as many slots as its `parallel`, reads Strata's live block (`/metrics`) for the panel's slots and the chat's reading counter, and keeps Strata's own output in `strata-<model>.log`.
+
 ## Configuration
 
 Everything is set from the panel and saved to `config.json`; while the server runs, change it from the panel, not by hand. For HTTPS, put `fullchain.pem` and `privkey.pem` in `certs/`: the server then serves HTTPS on port 11500 and plain HTTP on 11501.
@@ -105,10 +109,11 @@ Everything is set from the panel and saved to `config.json`; while the server ru
 
 53ON AI Server stands on the work of others, and we thank them:
 
-- [llama.cpp](https://github.com/ggml-org/llama.cpp) by ggml-org and its community, the engine that runs every local model here.
-- [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) by leejet, the engine behind image creation and editing.
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) by ggml-org and its community, the first engine for text models here.
+- [Strata](https://github.com/Niko1221/Strata) by Niko1221, the second engine for text models; its model library and file discovery inspired the catalog editor, and its design system (colors, spacing and components, MIT) gives the panel its look.
+- [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) by leejet, the engine behind pictures and clips.
+- [MiniMax H3](https://huggingface.co/MiniMaxAI/MiniMax-H3) by MiniMax, the open video model with sound the catalog is calibrated for.
 - [LiteLLM](https://github.com/BerriAI/litellm), whose public table of model prices tells the server what each cloud request costs.
-- [Strata](https://github.com/Niko1221/Strata), whose model library and file discovery inspired the catalog editor, and whose design system (colors, spacing and components, MIT) gives the panel its look.
 - The AMD Linux community: the Mesa RADV developers and the [kisak-mesa](https://launchpad.net/~kisak/+archive/ubuntu/kisak-mesa) PPA, which keep Vulkan fast on Ryzen AI Max.
 
 ## Security

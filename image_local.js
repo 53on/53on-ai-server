@@ -53,6 +53,9 @@ function measure(me) {
   const g = me.proc ? gpuGb(me.proc.pid) : 0, m = C.models[me.id];
   if (m && g > (used[me.id] || 0) + 0.1) { used[me.id] = g; m.measured = Object.assign({}, m.measured, { gb: g }); grew(); }
 }
+// a card's LoRAs, gen.lora as sd-server's own field with absolute paths: their folder at start, their names in a request
+const loraDir = (g) => { const l = ((g || {}).lora || [])[0]; return l && l.path ? ['--lora-model-dir', path.dirname(l.path)] : []; };
+const genOf = (g) => Object.assign({}, g, g && g.lora ? { lora: g.lora.map((l) => ({ path: path.basename(l.path), multiplier: +l.multiplier || 1 })) } : {});
 
 // GPU memory a process holds, from DRM fdinfo (amdgpu: vram + gtt per client), in GB; 0 when unknown
 function gpuGb(pid) {
@@ -117,7 +120,7 @@ function load(id, cb, gone) {
     try { fs.renameSync(LOG, LOG + '.1'); } catch (_) {}
     let out = 'ignore'; try { out = fs.openSync(LOG, 'w'); } catch (_) {}
     let p;
-    try { p = me.proc = spawn(C.bin, (m.args || []).concat(['--eager-load', '--listen-ip', '127.0.0.1', '--listen-port', String(me.port = port)]), { stdio: ['ignore', out, out] }); }
+    try { p = me.proc = spawn(C.bin, (m.args || []).concat(loraDir(m.gen), ['--eager-load', '--listen-ip', '127.0.0.1', '--listen-port', String(me.port = port)]), { stdio: ['ignore', out, out] }); }
     catch (e) { return done(e); } finally { if (typeof out === 'number') fs.closeSync(out); }
     p.on('error', done);
     if (p.pid) sd = p;
@@ -170,7 +173,7 @@ function run(id, job, cb) {
         const me = cur, t0 = Date.now();
         me.busy = true; clearTimeout(idle);
         const fin = (e2, png) => { if (cur === me) { me.busy = false; me.last = Date.now(); touch(); } end(e2, png); };
-        const body = Object.assign({ seed: -1 }, C.models[id].gen, { prompt: job.prompt, output_format: 'png' });
+        const body = Object.assign({ seed: -1 }, genOf(C.models[id].gen), { prompt: job.prompt, output_format: 'png' });
         if (job.image) body.ref_images = [job.image];
         // A chat generating beside a picture runs 2-2.5x slower (one GPU): the picture starts when the chat ends, 60 s at most.
         // sd-server cannot stop a running job, so a chat that arrives mid-picture still shares the GPU.
@@ -269,4 +272,4 @@ function draw(id, a, cb) {
   fetchImage(a.image, (e, img) => e ? bad(e, 'could not read the image to edit') : go(img));
 }
 
-module.exports = { options, has, task, can, need, peak, list, state, load, unload, draw, gpuGb, freePort, DIR, DAY, T, LAN, jobs: () => pend, held, busyWith: (f) => { chatBusy = f; }, roomWith: (f) => { room = f; }, freedWith: (f) => { freed = f; }, grewWith: (f) => { grew = f; } };
+module.exports = { options, has, task, can, need, peak, list, state, load, unload, draw, fetchImage, loraDir, genOf, gpuGb, freePort, DIR, DAY, T, LAN, jobs: () => pend, held, busyWith: (f) => { chatBusy = f; }, roomWith: (f) => { room = f; }, freedWith: (f) => { freed = f; }, grewWith: (f) => { grew = f; } };
